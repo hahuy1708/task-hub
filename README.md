@@ -39,13 +39,31 @@ uv sync
 
 Lệnh này tạo môi trường `.venv` nếu chưa có và cài dependency từ `pyproject.toml` cùng `uv.lock`, bao gồm các công cụ dev `pytest`, `ruff` và `mypy`.
 
-## Chạy API
+
+Tạo file cấu hình local từ mẫu:
+
+```bash
+cp .env.example .env
+```
+
+Sau đó điền đầy đủ thông tin vào file `.env`
+
+Tạo bảng từ migration:
+
+```bash
+uv run alembic upgrade head
+```
+
+Chạy API:
 
 ```bash
 uv run fastapi dev src/task_hub/main.py
 ```
 
-Mặc định API chạy tại <http://127.0.0.1:8000>.
+
+## API docs
+
+API chạy tại <http://127.0.0.1:8000> sau khi làm theo bước Chạy API ở trên.
 
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - ReDoc: <http://127.0.0.1:8000/redoc>
@@ -58,7 +76,7 @@ Dừng server bằng `Ctrl+C`.
 ```bash
 uv run pytest
 uv run ruff check .
-uv run ruff format .
+uv run ruff format --check .
 uv run mypy
 ```
 
@@ -70,6 +88,7 @@ src/task_hub/
 ├── main.py
 ├── models/
 ├── routers/
+├── repositories/
 ├── schemas/
 └── services/
 
@@ -78,7 +97,8 @@ tests/
 
 - `models/`: entity và enum của Task.
 - `schemas/`: kiểm tra dữ liệu vào và định dạng dữ liệu trả về.
-- `services/`: thao tác và quy tắc nghiệp vụ cho Task.
+- `services/`: thao tác và quy tắc nghiệp vụ.
+- `repositories/`: thao tác với cơ sở dữ liệu.
 - `routers/`: các HTTP endpoint.
 - `dependencies.py`: cung cấp `TaskService` cho router.
 - `main.py`: khởi tạo FastAPI, đăng ký router và xử lý lỗi 404.
