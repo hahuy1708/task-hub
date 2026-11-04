@@ -1,6 +1,10 @@
-from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from enum import StrEnum
+
+from sqlalchemy import Date, DateTime, Enum, Integer, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from task_hub.models.base import Base
 
 
 class TaskStatus(StrEnum):
@@ -17,12 +21,21 @@ class TaskPriority(StrEnum):
     URGENT = "URGENT"
 
 
-@dataclass
-class Task:
-    id: int
-    title: str
-    description: str | None = None
-    status: TaskStatus = TaskStatus.TODO
-    priority: TaskPriority = TaskPriority.MEDIUM
-    due_date: date | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[TaskStatus] = mapped_column(
+        Enum(TaskStatus, name="task_status"), nullable=False, default=TaskStatus.TODO
+    )
+    priority: Mapped[TaskPriority] = mapped_column(
+        Enum(TaskPriority, name="task_priority"),
+        nullable=False,
+        default=TaskPriority.MEDIUM,
+    )
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )

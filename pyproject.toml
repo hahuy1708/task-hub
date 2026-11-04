@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.1",
     "asyncmy>=0.2.17",
+    "cryptography>=50.0.2",
     "fastapi[standard]>=0.162.0",
     "python-dotenv>=1.2.4",
     "sqlalchemy[asyncio]>=2.1.6",
