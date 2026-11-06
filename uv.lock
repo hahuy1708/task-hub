@@ -1807,6 +1807,7 @@ dependencies = [
     { name = "asyncmy" },
     { name = "cryptography" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
@@ -1824,6 +1825,7 @@ requires-dist = [
     { name = "asyncmy", specifier = ">=0.2.17" },
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.162.0" },
+    { name = "pydantic-settings", specifier = ">=2.16.2" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.6" },
 ]
