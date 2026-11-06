@@ -73,6 +73,16 @@ Dừng server bằng `Ctrl+C`.
 
 ## Chạy kiểm tra
 
+Test API hiện kết nối tới MySQL qua `DATABASE_URL`. Trước khi chạy, hãy điền `.env`,
+khởi động MySQL và tạo bảng bằng migration:
+
+```bash
+docker compose up -d mysql
+uv run alembic upgrade head
+```
+
+Chỉ chạy `uv run pytest` sau khi container MySQL đã ở trạng thái healthy.
+
 ```bash
 uv run pytest
 uv run ruff check .
