@@ -23,17 +23,14 @@ class TaskRepository:
     async def add(self, data: TaskCreate) -> Task:
         task = Task(**data.model_dump())
         self.session.add(task)
-        await self.session.commit()
-        await self.session.refresh(task)
+        await self.session.flush()
         return task
 
     async def save(self, task: Task, data: TaskUpdate) -> Task:
         for name, value in data.model_dump(exclude_unset=True).items():
             setattr(task, name, value)
-        await self.session.commit()
-        await self.session.refresh(task)
+        await self.session.flush()
         return task
 
     async def delete(self, task: Task) -> None:
         await self.session.delete(task)
-        await self.session.commit()
