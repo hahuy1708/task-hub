@@ -48,6 +48,14 @@ cp .env.example .env
 
 Sau đó điền đầy đủ thông tin vào file `.env`
 
+Tạo `JWT_SECRET_KEY` riêng cho máy của bạn (không dùng giá trị mẫu):
+
+```bash
+uv run python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Sao chép kết quả vào `JWT_SECRET_KEY` trong `.env`. Không commit file `.env`.
+
 Tạo bảng từ migration:
 
 ```bash
@@ -68,6 +76,17 @@ API chạy tại <http://127.0.0.1:8000> sau khi làm theo bước Chạy API �
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - ReDoc: <http://127.0.0.1:8000/redoc>
 - Health check: <http://127.0.0.1:8000/health>
+
+Đăng ký qua `POST /api/v1/auth/register`, đăng nhập bằng `POST /api/v1/auth/login`,
+rồi dán `access_token` vào **Authorize** trong Swagger UI. Các endpoint `/api/v1/tasks`
+và `/api/v1/users/me` yêu cầu Bearer token. `POST /api/v1/auth/refresh` cấp cặp token
+mới và thu hồi refresh token cũ; `POST /api/v1/auth/logout` thu hồi refresh token.
+Tài khoản đăng ký mặc định có role `MEMBER`; `GET /api/v1/users` chỉ dành cho `ADMIN`.
+Để cấp quyền admin ban đầu, đăng ký tài khoản rồi chạy trong MySQL Workbench:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'your-email@example.com';
+```
 
 Dừng server bằng `Ctrl+C`.
 

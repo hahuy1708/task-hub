@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from task_hub.core.constants import (
     TASK_DESCRIPTION_MAX_LENGTH,
@@ -12,10 +12,7 @@ from task_hub.core.messages import (
     TASK_FIELD_CANNOT_BE_NULL,
 )
 from task_hub.models.enums import TaskPriority, TaskStatus
-
-
-class BaseSchema(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+from task_hub.schemas.base import BaseSchema
 
 
 class TaskCreate(BaseSchema):
