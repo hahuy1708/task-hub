@@ -11,3 +11,15 @@ class AppException(Exception):
 
 class NotFoundException(AppException):
     status_code = HTTPStatus.NOT_FOUND
+
+
+class UnauthorizedException(AppException):
+    status_code = HTTPStatus.UNAUTHORIZED
+
+
+class ForbiddenException(AppException):
+    status_code = HTTPStatus.FORBIDDEN
+
+
+class ConflictException(AppException):
+    status_code = HTTPStatus.CONFLICT

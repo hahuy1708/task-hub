@@ -15,7 +15,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-app = FastAPI(title="TaskHub", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="TaskHub",
+    version="0.1.0",
+    lifespan=lifespan,
+    swagger_ui_parameters={"persistAuthorization": True},
+)
 app.include_router(api_router, prefix="/api/v1")
 
 
