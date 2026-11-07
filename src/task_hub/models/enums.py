@@ -13,3 +13,8 @@ class TaskPriority(StrEnum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     URGENT = "URGENT"
+
+
+class SystemRole(StrEnum):
+    ADMIN = "ADMIN"
+    MEMBER = "MEMBER"
