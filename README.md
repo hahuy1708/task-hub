@@ -73,8 +73,16 @@ Dừng server bằng `Ctrl+C`.
 
 ## Chạy kiểm tra
 
+Test dùng một file SQLite tạm riêng cho mỗi test; không kết nối MySQL và không cần cấu hình
+database test. Khởi động MySQL chỉ cần khi chạy ứng dụng hoặc migration.
+
 ```bash
 uv run pytest
+```
+
+Các kiểm tra tĩnh:
+
+```bash
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy

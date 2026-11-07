@@ -18,7 +18,7 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
 def get_task_service(session: SessionDep) -> TaskService:
-    return TaskService(TaskRepository(session))
+    return TaskService(TaskRepository(session), session)
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]

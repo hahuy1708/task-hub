@@ -10,5 +10,6 @@ wheels/
 .venv
 .mypy_cache/
 .pytest_cache/
+.taskhub-test-*/
 .ruff_cache/
 .env
