@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 from sqlalchemy import Date, Enum, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -27,6 +27,5 @@ class Task(Base):
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime(),
         nullable=False,
-        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
