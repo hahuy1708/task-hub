@@ -14,7 +14,9 @@ from task_hub.models.user import User
 from task_hub.repositories.task import TaskRepository
 from task_hub.repositories.user import UserRepository
 from task_hub.security import decode_token
+from task_hub.services.project import ProjectService
 from task_hub.services.task import TaskService
+from task_hub.services.workspace import WorkspaceService
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
@@ -30,6 +32,20 @@ def get_task_service(session: SessionDep) -> TaskService:
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+
+
+def get_workspace_service(session: SessionDep) -> WorkspaceService:
+    return WorkspaceService(session)
+
+
+WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
+
+
+def get_project_service(session: SessionDep) -> ProjectService:
+    return ProjectService(session)
+
+
+ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
 
 http_bearer = HTTPBearer()
 
