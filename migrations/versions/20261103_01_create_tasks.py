@@ -10,6 +10,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Keep this revision's schema values fixed; do not import mutable app constants.
     op.create_table(
         "tasks",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),

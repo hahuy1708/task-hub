@@ -1,41 +1,80 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, status
+from fastapi import APIRouter, Path, Query, Response, status
 
+from task_hub.core.constants import (
+    TASK_ID_MIN,
+    TASK_LIST_DEFAULT_LIMIT,
+    TASK_LIST_DEFAULT_SKIP,
+    TASK_LIST_MAX_LIMIT,
+    TASK_LIST_MIN_LIMIT,
+    TASK_SKIP_MIN,
+)
 from task_hub.dependencies import TaskServiceDep
 from task_hub.schemas.task import TaskCreate, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-TaskId = Annotated[int, Path(ge=1)]
+TaskId = Annotated[int, Path(ge=TASK_ID_MIN)]
 
 
-@router.get("")
+@router.get(
+    "",
+    summary="List tasks",
+    responses={
+        200: {
+            "headers": {
+                "X-Total-Count": {
+                    "description": "Total number of tasks before pagination.",
+                    "schema": {"type": "integer"},
+                }
+            }
+        }
+    },
+)
 async def list_tasks(
     service: TaskServiceDep,
-    skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    response: Response,
+    skip: Annotated[int, Query(ge=TASK_SKIP_MIN)] = TASK_LIST_DEFAULT_SKIP,
+    limit: Annotated[
+        int, Query(ge=TASK_LIST_MIN_LIMIT, le=TASK_LIST_MAX_LIMIT)
+    ] = TASK_LIST_DEFAULT_LIMIT,
 ) -> list[TaskRead]:
-    tasks = await service.list_tasks(skip=skip, limit=limit)
+    """List one page of tasks; X-Total-Count reports the full collection size."""
+    tasks, total = await service.list_tasks(skip=skip, limit=limit)
+    response.headers["X-Total-Count"] = str(total)
     return [TaskRead.model_validate(task) for task in tasks]
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, summary="Create a task")
 async def create_task(data: TaskCreate, service: TaskServiceDep) -> TaskRead:
     return TaskRead.model_validate(await service.create_task(data))
 
 
-@router.get("/{task_id}")
+@router.get(
+    "/{task_id}",
+    summary="Get a task",
+    responses={404: {"description": "Task not found"}},
+)
 async def get_task(task_id: TaskId, service: TaskServiceDep) -> TaskRead:
     return TaskRead.model_validate(await service.get_task(task_id))
 
 
-@router.patch("/{task_id}")
+@router.patch(
+    "/{task_id}",
+    summary="Update a task",
+    responses={404: {"description": "Task not found"}},
+)
 async def update_task(
     task_id: TaskId, data: TaskUpdate, service: TaskServiceDep
 ) -> TaskRead:
     return TaskRead.model_validate(await service.update_task(task_id, data))
 
 
-@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a task",
+    responses={404: {"description": "Task not found"}},
+)
 async def delete_task(task_id: TaskId, service: TaskServiceDep) -> None:
     await service.delete_task(task_id)

@@ -1,27 +1,71 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from task_hub.models.task import TaskPriority, TaskStatus
+from task_hub.core.constants import (
+    TASK_DESCRIPTION_MAX_LENGTH,
+    TASK_TITLE_MAX_LENGTH,
+    TASK_TITLE_MIN_LENGTH,
+)
+from task_hub.core.messages import (
+    TASK_DUE_DATE_IN_PAST,
+    TASK_FIELD_CANNOT_BE_NULL,
+)
+from task_hub.models.enums import TaskPriority, TaskStatus
 
 
-class TaskCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    description: str | None = Field(default=None, max_length=2000)
+class BaseSchema(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class TaskCreate(BaseSchema):
+    title: str = Field(
+        min_length=TASK_TITLE_MIN_LENGTH, max_length=TASK_TITLE_MAX_LENGTH
+    )
+    description: str | None = Field(
+        default=None, max_length=TASK_DESCRIPTION_MAX_LENGTH
+    )
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: date | None = None
 
+    @field_validator("due_date")
+    @classmethod
+    def due_date_must_not_be_in_the_past(cls, value: date | None) -> date | None:
+        if value is not None and value < date.today():
+            raise ValueError(TASK_DUE_DATE_IN_PAST)
+        return value
 
-class TaskUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = Field(default=None, max_length=2000)
+
+class TaskUpdate(BaseSchema):
+    title: str | None = Field(
+        default=None,
+        min_length=TASK_TITLE_MIN_LENGTH,
+        max_length=TASK_TITLE_MAX_LENGTH,
+    )
+    description: str | None = Field(
+        default=None, max_length=TASK_DESCRIPTION_MAX_LENGTH
+    )
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: date | None = None
 
+    @field_validator("title", "status", "priority", mode="before")
+    @classmethod
+    def reject_null_for_non_nullable_fields(cls, value: object) -> object:
+        if value is None:
+            raise ValueError(TASK_FIELD_CANNOT_BE_NULL)
+        return value
 
-class TaskRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    @field_validator("due_date")
+    @classmethod
+    def due_date_must_not_be_in_the_past(cls, value: date | None) -> date | None:
+        if value is not None and value < date.today():
+            raise ValueError(TASK_DUE_DATE_IN_PAST)
+        return value
+
+
+class TaskRead(BaseSchema):
+    model_config = ConfigDict(str_strip_whitespace=True, from_attributes=True)
 
     id: int
     title: str
