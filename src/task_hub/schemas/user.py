@@ -22,6 +22,11 @@ class UserRead(BaseSchema):
     created_at: datetime
 
 
+class UserListRead(BaseSchema):
+    items: list[UserRead]
+    total: int
+
+
 class UserUpdate(BaseSchema):
     full_name: str | None = Field(
         default=None, min_length=1, max_length=AUTH_FULL_NAME_MAX_LENGTH

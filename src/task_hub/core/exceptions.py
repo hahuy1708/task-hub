@@ -15,6 +15,7 @@ class NotFoundException(AppException):
 
 class UnauthorizedException(AppException):
     status_code = HTTPStatus.UNAUTHORIZED
+    headers = {"WWW-Authenticate": "Bearer"}
 
 
 class ForbiddenException(AppException):

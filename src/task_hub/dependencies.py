@@ -7,14 +7,16 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_hub.core.exceptions import ForbiddenException, UnauthorizedException
-from task_hub.core.messages import ADMIN_REQUIRED, INVALID_TOKEN, INVALID_TOKEN_TYPE
+from task_hub.core.messages import ADMIN_REQUIRED, INVALID_TOKEN
 from task_hub.database import SessionFactory
-from task_hub.models.enums import SystemRole
+from task_hub.models.enums import SystemRole, TokenType
 from task_hub.models.user import User
 from task_hub.repositories.task import TaskRepository
 from task_hub.repositories.user import UserRepository
 from task_hub.security import decode_token
+from task_hub.services.auth import AuthService
 from task_hub.services.task import TaskService
+from task_hub.services.user import UserService
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
@@ -31,6 +33,20 @@ def get_task_service(session: SessionDep) -> TaskService:
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
 
+
+def get_auth_service(session: SessionDep) -> AuthService:
+    return AuthService(session)
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+def get_user_service(session: SessionDep) -> UserService:
+    return UserService(session)
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
 http_bearer = HTTPBearer()
 
 
@@ -39,9 +55,7 @@ async def get_current_user(
     session: SessionDep,
 ) -> User:
     try:
-        payload = decode_token(credentials.credentials)
-        if payload.get("type") != "access":
-            raise UnauthorizedException(INVALID_TOKEN_TYPE)
+        payload = decode_token(credentials.credentials, TokenType.ACCESS)
         user_id = int(payload["sub"])
     except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
         raise UnauthorizedException(INVALID_TOKEN) from None

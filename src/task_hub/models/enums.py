@@ -18,3 +18,8 @@ class TaskPriority(StrEnum):
 class SystemRole(StrEnum):
     ADMIN = "ADMIN"
     MEMBER = "MEMBER"
+
+
+class TokenType(StrEnum):
+    ACCESS = "access"
+    REFRESH = "refresh"

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_hub.models.user import User
@@ -30,8 +30,10 @@ class UserRepository:
         await self.session.flush()
         return user
 
-    async def list_all(self, *, skip: int, limit: int) -> list[User]:
+    async def list_all(self, *, skip: int, limit: int) -> tuple[list[User], int]:
         result = await self.session.scalars(
             select(User).order_by(User.id).offset(skip).limit(limit)
         )
-        return list(result.all())
+        users = list(result.all())
+        total = await self.session.scalar(select(func.count()).select_from(User))
+        return users, int(total or 0)

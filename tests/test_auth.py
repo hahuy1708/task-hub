@@ -82,6 +82,36 @@ def test_refresh_rotates_and_logout_revokes_token(client: TestClient) -> None:
     )
 
 
+def test_reusing_refresh_token_revokes_token_family(client: TestClient) -> None:
+    email, password = register(client)
+    tokens = login(client, email, password)
+    refreshed = client.post(
+        f"{AUTH}/refresh", json={"refresh_token": tokens["refresh_token"]}
+    )
+    assert refreshed.status_code == 200
+    new_tokens = refreshed.json()
+
+    reused = client.post(
+        f"{AUTH}/refresh", json={"refresh_token": tokens["refresh_token"]}
+    )
+    assert reused.status_code == 401
+    family_revoked = client.post(
+        f"{AUTH}/refresh", json={"refresh_token": new_tokens["refresh_token"]}
+    )
+    assert family_revoked.status_code == 401
+
+
+def test_refresh_token_cannot_authenticate_as_access_token(client: TestClient) -> None:
+    email, password = register(client)
+    tokens = login(client, email, password)
+    response = client.get(
+        f"{USERS}/me",
+        headers={"Authorization": f"Bearer {tokens['refresh_token']}"},
+    )
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
 def test_change_password_revokes_refresh_tokens(client: TestClient) -> None:
     email, password = register(client)
     tokens = login(client, email, password)
@@ -93,6 +123,12 @@ def test_change_password_revokes_refresh_tokens(client: TestClient) -> None:
         json={"current_password": password, "new_password": "newpassword123"},
     )
     assert changed.status_code == 204
+    assert (
+        client.post(
+            f"{AUTH}/login", json={"email": email, "password": password}
+        ).status_code
+        == 401
+    )
     revoked = client.post(
         f"{AUTH}/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
@@ -107,4 +143,5 @@ def test_member_cannot_list_users(authenticated_client: TestClient) -> None:
 def test_admin_can_list_users(admin_client: TestClient) -> None:
     response = admin_client.get(USERS)
     assert response.status_code == 200
-    assert response.json()[0]["role"] == "ADMIN"
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["role"] == "ADMIN"

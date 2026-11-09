@@ -23,8 +23,8 @@ def test_list_respects_pagination(authenticated_client: TestClient) -> None:
 
     response = authenticated_client.get(API, params={"limit": 2})
     assert response.status_code == 200
-    assert len(response.json()) == 2
-    assert response.headers["X-Total-Count"] == "3"
+    assert len(response.json()["items"]) == 2
+    assert response.json()["total"] == 3
 
 
 def test_create_get_update_and_delete(authenticated_client: TestClient) -> None:
@@ -61,7 +61,9 @@ def test_task_id_must_be_positive(authenticated_client: TestClient) -> None:
 
 
 def test_missing_task_returns_404(authenticated_client: TestClient) -> None:
-    assert authenticated_client.get(f"{API}/2147483000").status_code == 404
+    response = authenticated_client.get(f"{API}/2147483000")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Task 2147483000 not found"}
 
 
 def test_patch_rejects_null_required_fields_and_clears_nullable_fields(
