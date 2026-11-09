@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from task_hub.core.exceptions import UnauthorizedException
 from task_hub.core.messages import WRONG_CURRENT_PASSWORD
@@ -23,9 +24,14 @@ class UserService:
         await self.session.refresh(user)
         return user
 
+    async def list_users(self, *, skip: int, limit: int) -> tuple[list[User], int]:
+        return await self.users.list_all(skip=skip, limit=limit)
+
     async def change_password(self, user: User, data: ChangePasswordRequest) -> None:
-        if not verify_password(data.current_password, user.hashed_password):
+        if not await run_in_threadpool(
+            verify_password, data.current_password, user.hashed_password
+        ):
             raise UnauthorizedException(WRONG_CURRENT_PASSWORD)
-        user.hashed_password = hash_password(data.new_password)
+        user.hashed_password = await run_in_threadpool(hash_password, data.new_password)
         await self.refresh_tokens.revoke_all_for_user(user.id)
         await self.session.commit()

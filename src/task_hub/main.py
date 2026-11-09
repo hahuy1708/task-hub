@@ -29,6 +29,7 @@ async def handle_app_exception(_: Request, exc: AppException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.message},
+        headers=getattr(exc, "headers", None),
     )
 
 

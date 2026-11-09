@@ -26,9 +26,22 @@ class RefreshTokenRepository:
         )
         return result.first()
 
-    async def revoke(self, token: RefreshToken) -> None:
-        token.revoked_at = datetime.now(UTC)
-        await self.session.flush()
+    async def get_by_jti(self, jti: str) -> RefreshToken | None:
+        result = await self.session.scalars(
+            select(RefreshToken).where(RefreshToken.jti == jti)
+        )
+        return result.first()
+
+    async def revoke(self, jti: str) -> bool:
+        result = await self.session.execute(
+            update(RefreshToken)
+            .where(
+                RefreshToken.jti == jti,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
+        return bool(getattr(result, "rowcount", 0) == 1)
 
     async def revoke_all_for_user(self, user_id: int) -> None:
         await self.session.execute(

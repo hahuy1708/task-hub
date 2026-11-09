@@ -6,11 +6,20 @@ from task_hub.core.constants import (
     AUTH_USER_LIST_DEFAULT_LIMIT,
     AUTH_USER_LIST_DEFAULT_SKIP,
     AUTH_USER_LIST_MAX_LIMIT,
+    AUTH_USER_LIST_MIN_LIMIT,
+    AUTH_USER_LIST_MIN_SKIP,
 )
-from task_hub.dependencies import AdminDep, CurrentUserDep, SessionDep
-from task_hub.repositories.user import UserRepository
-from task_hub.schemas.user import ChangePasswordRequest, UserRead, UserUpdate
-from task_hub.services.user import UserService
+from task_hub.dependencies import (
+    AdminDep,
+    CurrentUserDep,
+    UserServiceDep,
+)
+from task_hub.schemas.user import (
+    ChangePasswordRequest,
+    UserListRead,
+    UserRead,
+    UserUpdate,
+)
 
 router = APIRouter(tags=["users"])
 
@@ -18,14 +27,19 @@ router = APIRouter(tags=["users"])
 @router.get("", summary="List users (admin only)")
 async def list_users(
     _: AdminDep,
-    session: SessionDep,
-    skip: Annotated[int, Query(ge=0)] = AUTH_USER_LIST_DEFAULT_SKIP,
-    limit: Annotated[int, Query(ge=1, le=AUTH_USER_LIST_MAX_LIMIT)] = (
-        AUTH_USER_LIST_DEFAULT_LIMIT
-    ),
-) -> list[UserRead]:
-    users = await UserRepository(session).list_all(skip=skip, limit=limit)
-    return [UserRead.model_validate(user) for user in users]
+    service: UserServiceDep,
+    skip: Annotated[
+        int, Query(ge=AUTH_USER_LIST_MIN_SKIP)
+    ] = AUTH_USER_LIST_DEFAULT_SKIP,
+    limit: Annotated[
+        int, Query(ge=AUTH_USER_LIST_MIN_LIMIT, le=AUTH_USER_LIST_MAX_LIMIT)
+    ] = (AUTH_USER_LIST_DEFAULT_LIMIT),
+) -> UserListRead:
+    users, total = await service.list_users(skip=skip, limit=limit)
+    return UserListRead(
+        items=[UserRead.model_validate(user) for user in users],
+        total=total,
+    )
 
 
 @router.get("/me", summary="Get current user")
@@ -35,9 +49,9 @@ async def get_me(user: CurrentUserDep) -> UserRead:
 
 @router.patch("/me", summary="Update current user")
 async def update_me(
-    data: UserUpdate, user: CurrentUserDep, session: SessionDep
+    data: UserUpdate, user: CurrentUserDep, service: UserServiceDep
 ) -> UserRead:
-    updated_user = await UserService(session).update_me(user, data)
+    updated_user = await service.update_me(user, data)
     return UserRead.model_validate(updated_user)
 
 
@@ -47,7 +61,7 @@ async def update_me(
     summary="Change password",
 )
 async def change_password(
-    data: ChangePasswordRequest, user: CurrentUserDep, session: SessionDep
+    data: ChangePasswordRequest, user: CurrentUserDep, service: UserServiceDep
 ) -> Response:
-    await UserService(session).change_password(user, data)
+    await service.change_password(user, data)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

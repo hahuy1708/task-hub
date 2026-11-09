@@ -20,6 +20,11 @@ class SystemRole(StrEnum):
     MEMBER = "MEMBER"
 
 
+class TokenType(StrEnum):
+    ACCESS = "access"
+    REFRESH = "refresh"
+
+
 class WorkspaceRole(StrEnum):
     OWNER = "OWNER"
     EDITOR = "EDITOR"
