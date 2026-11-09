@@ -14,11 +14,11 @@ from task_hub.models.user import User
 from task_hub.repositories.task import TaskRepository
 from task_hub.repositories.user import UserRepository
 from task_hub.security import decode_token
-from task_hub.services.project import ProjectService
 from task_hub.services.auth import AuthService
+from task_hub.services.project import ProjectService
 from task_hub.services.task import TaskService
-from task_hub.services.workspace import WorkspaceService
 from task_hub.services.user import UserService
+from task_hub.services.workspace import WorkspaceService
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
