@@ -7,7 +7,7 @@ from task_hub.core.constants import (
     PROJECT_NAME_MAX_LENGTH,
     PROJECT_NAME_MIN_LENGTH,
 )
-from task_hub.core.messages import TASK_FIELD_CANNOT_BE_NULL
+from task_hub.core.messages import FIELD_CANNOT_BE_NULL
 from task_hub.models.enums import ProjectStatus
 from task_hub.schemas.base import BaseSchema
 
@@ -36,7 +36,7 @@ class ProjectUpdate(BaseSchema):
     @classmethod
     def reject_null_for_non_nullable_fields(cls, value: object) -> object:
         if value is None:
-            raise ValueError(TASK_FIELD_CANNOT_BE_NULL)
+            raise ValueError(FIELD_CANNOT_BE_NULL)
         return value
 
 

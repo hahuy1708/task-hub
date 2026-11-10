@@ -136,3 +136,36 @@ def test_owner_adds_member_and_member_can_leave(client: TestClient) -> None:
         ).status_code
         == 403
     )
+
+
+def test_cannot_add_member_with_owner_role(client: TestClient) -> None:
+    owner_headers = make_user(client)
+    member_headers = make_user(client)
+    member_id = client.get("/api/v1/users/me", headers=member_headers).json()["id"]
+    workspace = create_workspace(client, owner_headers)
+
+    response = client.post(
+        f"{WORKSPACES}/{workspace['id']}/members",
+        headers=owner_headers,
+        json={"user_id": member_id, "role": "OWNER"},
+    )
+    assert response.status_code == 422
+
+
+def test_admin_can_access_and_delete_other_user_workspace(
+    admin_client: TestClient,
+) -> None:
+    owner_headers = make_user(admin_client)
+    workspace = create_workspace(admin_client, owner_headers)
+    workspace_id = workspace["id"]
+
+    workspaces_list = admin_client.get(WORKSPACES).json()
+    assert any(ws["id"] == workspace_id for ws in workspaces_list)
+
+    response = admin_client.get(f"{WORKSPACES}/{workspace_id}")
+    assert response.status_code == 200
+    assert response.json()["id"] == workspace_id
+
+    delete_response = admin_client.delete(f"{WORKSPACES}/{workspace_id}")
+    assert delete_response.status_code == 204
+    assert admin_client.get(f"{WORKSPACES}/{workspace_id}").status_code == 404

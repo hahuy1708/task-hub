@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -20,7 +20,6 @@ class Workspace(Base):
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime(),
         nullable=False,
-        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
 
@@ -42,6 +41,5 @@ class WorkspaceMember(Base):
     joined_at: Mapped[datetime] = mapped_column(
         UTCDateTime(),
         nullable=False,
-        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )

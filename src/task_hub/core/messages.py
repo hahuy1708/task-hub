@@ -1,6 +1,7 @@
 TASK_NOT_FOUND = "Task {task_id} not found"
 TASK_DUE_DATE_IN_PAST = "due_date must be today or a future date"
-TASK_FIELD_CANNOT_BE_NULL = "This field cannot be null"
+FIELD_CANNOT_BE_NULL = "This field cannot be null"
+TASK_FIELD_CANNOT_BE_NULL = FIELD_CANNOT_BE_NULL
 EMAIL_ALREADY_REGISTERED = "Email {email} is already registered"
 INVALID_CREDENTIALS = "Invalid email or password"
 ACCOUNT_DEACTIVATED = "Account is deactivated"

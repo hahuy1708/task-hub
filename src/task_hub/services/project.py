@@ -11,10 +11,15 @@ from task_hub.services.workspace import WorkspaceService
 
 
 class ProjectService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        repository: ProjectRepository,
+        workspaces: WorkspaceService,
+        session: AsyncSession,
+    ) -> None:
         self.session = session
-        self.projects = ProjectRepository(session)
-        self.workspaces = WorkspaceService(session)
+        self.projects = repository
+        self.workspaces = workspaces
 
     async def create_project(
         self, workspace_id: int, user: User, data: ProjectCreate

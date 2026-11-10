@@ -79,14 +79,7 @@ async def list_members(
 ) -> list[WorkspaceMemberRead]:
     members = await service.list_members(workspace_id, user)
     return [
-        WorkspaceMemberRead(
-            workspace_id=member.workspace_id,
-            user_id=member.user_id,
-            email=member_user.email,
-            full_name=member_user.full_name,
-            role=member.role,
-            joined_at=member.joined_at,
-        )
+        WorkspaceMemberRead.from_member(member, member_user)
         for member, member_user in members
     ]
 
@@ -103,14 +96,7 @@ async def add_member(
     service: WorkspaceServiceDep,
 ) -> WorkspaceMemberRead:
     member, member_user = await service.add_member(workspace_id, user, data)
-    return WorkspaceMemberRead(
-        workspace_id=member.workspace_id,
-        user_id=member.user_id,
-        email=member_user.email,
-        full_name=member_user.full_name,
-        role=member.role,
-        joined_at=member.joined_at,
-    )
+    return WorkspaceMemberRead.from_member(member, member_user)
 
 
 @router.delete(

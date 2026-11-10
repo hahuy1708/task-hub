@@ -11,6 +11,7 @@ from task_hub.core.messages import ADMIN_REQUIRED, INVALID_TOKEN
 from task_hub.database import SessionFactory
 from task_hub.models.enums import SystemRole, TokenType
 from task_hub.models.user import User
+from task_hub.repositories.project import ProjectRepository
 from task_hub.repositories.task import TaskRepository
 from task_hub.repositories.user import UserRepository
 from task_hub.security import decode_token
@@ -57,8 +58,10 @@ def get_workspace_service(session: SessionDep) -> WorkspaceService:
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 
 
-def get_project_service(session: SessionDep) -> ProjectService:
-    return ProjectService(session)
+def get_project_service(
+    session: SessionDep, workspaces: WorkspaceServiceDep
+) -> ProjectService:
+    return ProjectService(ProjectRepository(session), workspaces, session)
 
 
 ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]

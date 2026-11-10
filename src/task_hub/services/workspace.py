@@ -1,6 +1,6 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from task_hub.core.constants import WORKSPACE_ROLE_PRIORITY
 from task_hub.core.exceptions import (
     ConflictException,
     ForbiddenException,
@@ -92,25 +92,30 @@ class WorkspaceService:
             raise ConflictException(
                 WORKSPACE_MEMBER_EXISTS.format(user_id=data.user_id)
             )
-        member = await self.members.add(
-            WorkspaceMember(
-                workspace_id=workspace_id,
-                user_id=target.id,
-                role=data.role,
+        try:
+            member = await self.members.add(
+                WorkspaceMember(
+                    workspace_id=workspace_id,
+                    user_id=target.id,
+                    role=data.role,
+                )
             )
-        )
-        await self.session.commit()
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise ConflictException(
+                WORKSPACE_MEMBER_EXISTS.format(user_id=data.user_id)
+            ) from None
         await self.session.refresh(member)
         return member, target
 
     async def remove_member(
         self, workspace_id: int, user: User, target_user_id: int
     ) -> None:
-        workspace = await self.get_workspace_record(workspace_id)
-        if target_user_id != user.id:
-            await self.check_access(workspace_id, user, WorkspaceRole.OWNER)
-        elif user.role != SystemRole.ADMIN:
-            await self.check_access(workspace_id, user, WorkspaceRole.VIEWER)
+        min_role = (
+            WorkspaceRole.VIEWER if target_user_id == user.id else WorkspaceRole.OWNER
+        )
+        workspace = await self.check_access(workspace_id, user, min_role)
         if target_user_id == workspace.owner_id:
             raise ConflictException(WORKSPACE_OWNER_CANNOT_LEAVE)
         member = await self.members.get(workspace_id, target_user_id)
@@ -128,11 +133,7 @@ class WorkspaceService:
         if user.role == SystemRole.ADMIN:
             return workspace
         member = await self.members.get(workspace_id, user.id)
-        if (
-            member is None
-            or WORKSPACE_ROLE_PRIORITY[member.role.value]
-            < (WORKSPACE_ROLE_PRIORITY[min_role.value])
-        ):
+        if member is None or member.role.priority < min_role.priority:
             raise ForbiddenException(WORKSPACE_ACCESS_DENIED)
         return workspace
 

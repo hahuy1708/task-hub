@@ -30,6 +30,14 @@ class WorkspaceRole(StrEnum):
     EDITOR = "EDITOR"
     VIEWER = "VIEWER"
 
+    @property
+    def priority(self) -> int:
+        return {
+            WorkspaceRole.VIEWER: 1,
+            WorkspaceRole.EDITOR: 2,
+            WorkspaceRole.OWNER: 3,
+        }[self]
+
 
 class ProjectStatus(StrEnum):
     ACTIVE = "ACTIVE"
