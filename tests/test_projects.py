@@ -91,7 +91,7 @@ def test_project_role_permissions_and_archive(client: TestClient) -> None:
         params={"status": "ARCHIVED", "skip": 0, "limit": 10},
     )
     assert filtered.status_code == 200
-    assert filtered.headers["X-Total-Count"] == "1"
-    assert [item["id"] for item in filtered.json()] == [project["id"]]
+    assert filtered.json()["total"] == 1
+    assert [item["id"] for item in filtered.json()["items"]] == [project["id"]]
     assert client.delete(project_url, headers=owner_headers).status_code == 204
     assert client.get(project_url, headers=owner_headers).status_code == 404

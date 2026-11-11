@@ -37,7 +37,8 @@ def test_create_and_list_workspaces(client: TestClient) -> None:
     assert members.status_code == 200
     assert members.json()[0]["role"] == "OWNER"
     assert members.json()[0]["user_id"] == workspace["owner_id"]
-    assert client.get(WORKSPACES, headers=outsider_headers).json() == []
+    listed = client.get(WORKSPACES, headers=outsider_headers).json()
+    assert listed == {"items": [], "total": 0}
     assert (
         client.get(
             f"{WORKSPACES}/{workspace['id']}", headers=outsider_headers
@@ -160,7 +161,7 @@ def test_admin_can_access_and_delete_other_user_workspace(
     workspace_id = workspace["id"]
 
     workspaces_list = admin_client.get(WORKSPACES).json()
-    assert any(ws["id"] == workspace_id for ws in workspaces_list)
+    assert any(ws["id"] == workspace_id for ws in workspaces_list["items"])
 
     response = admin_client.get(f"{WORKSPACES}/{workspace_id}")
     assert response.status_code == 200
