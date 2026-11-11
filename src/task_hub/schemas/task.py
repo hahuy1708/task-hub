@@ -34,6 +34,7 @@ class TaskCreate(BaseSchema):
     )
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: DueDate = None
+    assignee_id: int | None = Field(default=None, ge=1)
 
 
 class TaskUpdate(BaseSchema):
@@ -48,6 +49,7 @@ class TaskUpdate(BaseSchema):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: DueDate = None
+    assignee_id: int | None = Field(default=None, ge=1)
 
     @field_validator("title", "status", "priority", mode="before")
     @classmethod
@@ -61,14 +63,12 @@ class TaskRead(BaseSchema):
     model_config = ConfigDict(str_strip_whitespace=True, from_attributes=True)
 
     id: int
+    project_id: int
+    assignee_id: int | None
+    created_by: int | None
     title: str
     description: str | None
     status: TaskStatus
     priority: TaskPriority
     due_date: date | None
     created_at: datetime
-
-
-class TaskListRead(BaseSchema):
-    items: list[TaskRead]
-    total: int
