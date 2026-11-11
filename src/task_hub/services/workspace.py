@@ -144,3 +144,6 @@ class WorkspaceService:
                 WORKSPACE_NOT_FOUND.format(workspace_id=workspace_id)
             )
         return workspace
+
+    async def is_member(self, workspace_id: int, user_id: int) -> bool:
+        return await self.members.get(workspace_id, user_id) is not None

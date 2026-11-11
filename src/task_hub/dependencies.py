@@ -30,8 +30,19 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
-def get_task_service(session: SessionDep) -> TaskService:
-    return TaskService(TaskRepository(session), session)
+def get_workspace_service(session: SessionDep) -> WorkspaceService:
+    return WorkspaceService(session)
+
+
+WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
+
+
+def get_task_service(
+    session: SessionDep, workspaces: WorkspaceServiceDep
+) -> TaskService:
+    return TaskService(
+        TaskRepository(session), ProjectRepository(session), workspaces, session
+    )
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
@@ -49,13 +60,6 @@ def get_user_service(session: SessionDep) -> UserService:
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
-
-
-def get_workspace_service(session: SessionDep) -> WorkspaceService:
-    return WorkspaceService(session)
-
-
-WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 
 
 def get_project_service(
