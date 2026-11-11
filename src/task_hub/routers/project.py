@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, Response, status
+from fastapi import APIRouter, Path, Query, status
 
 from task_hub.core.constants import (
     PROJECT_LIST_DEFAULT_LIMIT,
@@ -9,6 +9,7 @@ from task_hub.core.constants import (
 )
 from task_hub.dependencies import CurrentUserDep, ProjectServiceDep
 from task_hub.models.enums import ProjectStatus
+from task_hub.schemas.page import Page
 from task_hub.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 
 router = APIRouter(tags=["projects"])
@@ -35,30 +36,17 @@ async def create_project(
 @router.get(
     "/workspaces/{workspace_id}/projects",
     summary="List projects in a workspace",
-    responses={
-        200: {
-            "headers": {
-                "X-Total-Count": {
-                    "description": (
-                        "Total number of matching projects before pagination."
-                    ),
-                    "schema": {"type": "integer"},
-                }
-            }
-        }
-    },
 )
 async def list_projects(
     workspace_id: WorkspaceId,
     user: CurrentUserDep,
     service: ProjectServiceDep,
-    response: Response,
     project_status: Annotated[ProjectStatus | None, Query(alias="status")] = None,
     skip: Annotated[int, Query(ge=0)] = PROJECT_LIST_DEFAULT_SKIP,
     limit: Annotated[int, Query(ge=1, le=PROJECT_LIST_MAX_LIMIT)] = (
         PROJECT_LIST_DEFAULT_LIMIT
     ),
-) -> list[ProjectRead]:
+) -> Page[ProjectRead]:
     projects, total = await service.list_projects(
         workspace_id,
         user,
@@ -66,8 +54,10 @@ async def list_projects(
         skip=skip,
         limit=limit,
     )
-    response.headers["X-Total-Count"] = str(total)
-    return [ProjectRead.model_validate(project) for project in projects]
+    return Page[ProjectRead](
+        items=[ProjectRead.model_validate(project) for project in projects],
+        total=total,
+    )
 
 
 @router.get("/projects/{project_id}", summary="Get a project")
