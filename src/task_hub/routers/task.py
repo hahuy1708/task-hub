@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, Response, status
+from fastapi import APIRouter, Path, Query, status
 
 from task_hub.core.constants import (
     TASK_ID_MIN,
@@ -11,38 +11,25 @@ from task_hub.core.constants import (
     TASK_SKIP_MIN,
 )
 from task_hub.dependencies import TaskServiceDep
-from task_hub.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from task_hub.schemas.task import TaskCreate, TaskListRead, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 TaskId = Annotated[int, Path(ge=TASK_ID_MIN)]
 
 
-@router.get(
-    "",
-    summary="List tasks",
-    responses={
-        200: {
-            "headers": {
-                "X-Total-Count": {
-                    "description": "Total number of tasks before pagination.",
-                    "schema": {"type": "integer"},
-                }
-            }
-        }
-    },
-)
+@router.get("", summary="List tasks")
 async def list_tasks(
     service: TaskServiceDep,
-    response: Response,
     skip: Annotated[int, Query(ge=TASK_SKIP_MIN)] = TASK_LIST_DEFAULT_SKIP,
     limit: Annotated[
         int, Query(ge=TASK_LIST_MIN_LIMIT, le=TASK_LIST_MAX_LIMIT)
     ] = TASK_LIST_DEFAULT_LIMIT,
-) -> list[TaskRead]:
-    """List one page of tasks; X-Total-Count reports the full collection size."""
+) -> TaskListRead:
     tasks, total = await service.list_tasks(skip=skip, limit=limit)
-    response.headers["X-Total-Count"] = str(total)
-    return [TaskRead.model_validate(task) for task in tasks]
+    return TaskListRead(
+        items=[TaskRead.model_validate(task) for task in tasks],
+        total=total,
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a task")

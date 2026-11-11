@@ -1,6 +1,7 @@
 from datetime import date, datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, ConfigDict, Field, field_validator
 
 from task_hub.core.constants import (
     TASK_DESCRIPTION_MAX_LENGTH,
@@ -12,10 +13,16 @@ from task_hub.core.messages import (
     TASK_FIELD_CANNOT_BE_NULL,
 )
 from task_hub.models.enums import TaskPriority, TaskStatus
+from task_hub.schemas.base import BaseSchema
 
 
-class BaseSchema(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+def due_date_must_not_be_in_the_past(value: date | None) -> date | None:
+    if value is not None and value < date.today():
+        raise ValueError(TASK_DUE_DATE_IN_PAST)
+    return value
+
+
+DueDate = Annotated[date | None, AfterValidator(due_date_must_not_be_in_the_past)]
 
 
 class TaskCreate(BaseSchema):
@@ -26,14 +33,7 @@ class TaskCreate(BaseSchema):
         default=None, max_length=TASK_DESCRIPTION_MAX_LENGTH
     )
     priority: TaskPriority = TaskPriority.MEDIUM
-    due_date: date | None = None
-
-    @field_validator("due_date")
-    @classmethod
-    def due_date_must_not_be_in_the_past(cls, value: date | None) -> date | None:
-        if value is not None and value < date.today():
-            raise ValueError(TASK_DUE_DATE_IN_PAST)
-        return value
+    due_date: DueDate = None
 
 
 class TaskUpdate(BaseSchema):
@@ -47,20 +47,13 @@ class TaskUpdate(BaseSchema):
     )
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
-    due_date: date | None = None
+    due_date: DueDate = None
 
     @field_validator("title", "status", "priority", mode="before")
     @classmethod
     def reject_null_for_non_nullable_fields(cls, value: object) -> object:
         if value is None:
             raise ValueError(TASK_FIELD_CANNOT_BE_NULL)
-        return value
-
-    @field_validator("due_date")
-    @classmethod
-    def due_date_must_not_be_in_the_past(cls, value: date | None) -> date | None:
-        if value is not None and value < date.today():
-            raise ValueError(TASK_DUE_DATE_IN_PAST)
         return value
 
 
@@ -74,3 +67,8 @@ class TaskRead(BaseSchema):
     priority: TaskPriority
     due_date: date | None
     created_at: datetime
+
+
+class TaskListRead(BaseSchema):
+    items: list[TaskRead]
+    total: int
