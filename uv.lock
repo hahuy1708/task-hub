@@ -1897,7 +1897,6 @@ dependencies = [
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
-    { name = "python-dotenv" },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
@@ -1918,7 +1917,6 @@ requires-dist = [
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3.1" },
     { name = "pydantic-settings", specifier = ">=2.16.2" },
     { name = "pyjwt", specifier = ">=2.15.1" },
-    { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.6" },
 ]
 

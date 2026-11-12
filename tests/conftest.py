@@ -3,11 +3,12 @@ import os
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import update
+from sqlalchemy import event, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -29,6 +30,12 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
         test_engine = create_async_engine(
             f"sqlite+aiosqlite:///{database_path}", poolclass=NullPool
         )
+
+        @event.listens_for(test_engine.sync_engine, "connect")
+        def enable_sqlite_foreign_keys(connection: Any, _record: Any) -> None:
+            cursor = connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
         async def create_tables() -> None:
             async with test_engine.begin() as connection:
