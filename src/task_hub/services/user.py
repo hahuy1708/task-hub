@@ -3,6 +3,7 @@ from starlette.concurrency import run_in_threadpool
 
 from task_hub.core.exceptions import UnauthorizedException
 from task_hub.core.messages import WRONG_CURRENT_PASSWORD
+from task_hub.core.pagination import Pagination
 from task_hub.models.user import User
 from task_hub.repositories.refresh_token import RefreshTokenRepository
 from task_hub.repositories.user import UserRepository
@@ -24,8 +25,8 @@ class UserService:
         await self.session.refresh(user)
         return user
 
-    async def list_users(self, *, skip: int, limit: int) -> tuple[list[User], int]:
-        return await self.users.list_all(skip=skip, limit=limit)
+    async def list_users(self, *, pagination: Pagination) -> tuple[list[User], int]:
+        return await self.users.list_all(pagination=pagination)
 
     async def change_password(self, user: User, data: ChangePasswordRequest) -> None:
         if not await run_in_threadpool(

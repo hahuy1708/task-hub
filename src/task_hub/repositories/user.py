@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from task_hub.core.pagination import Pagination
 from task_hub.models.user import User
 from task_hub.schemas.auth import RegisterRequest
 
@@ -30,9 +31,12 @@ class UserRepository:
         await self.session.flush()
         return user
 
-    async def list_all(self, *, skip: int, limit: int) -> tuple[list[User], int]:
+    async def list_all(self, *, pagination: Pagination) -> tuple[list[User], int]:
         result = await self.session.scalars(
-            select(User).order_by(User.id).offset(skip).limit(limit)
+            select(User)
+            .order_by(User.id)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
         )
         users = list(result.all())
         total = await self.session.scalar(select(func.count()).select_from(User))

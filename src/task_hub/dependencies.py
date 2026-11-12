@@ -2,12 +2,20 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from task_hub.core.constants import (
+    TASK_LIST_DEFAULT_LIMIT,
+    TASK_LIST_DEFAULT_SKIP,
+    TASK_LIST_MAX_LIMIT,
+    TASK_LIST_MIN_LIMIT,
+    TASK_SKIP_MIN,
+)
 from task_hub.core.exceptions import ForbiddenException, UnauthorizedException
 from task_hub.core.messages import ADMIN_REQUIRED, INVALID_TOKEN
+from task_hub.core.pagination import Pagination
 from task_hub.database import SessionFactory
 from task_hub.models.enums import SystemRole, TokenType
 from task_hub.models.user import User
@@ -28,6 +36,18 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def get_pagination(
+    skip: Annotated[int, Query(ge=TASK_SKIP_MIN)] = TASK_LIST_DEFAULT_SKIP,
+    limit: Annotated[int, Query(ge=TASK_LIST_MIN_LIMIT, le=TASK_LIST_MAX_LIMIT)] = (
+        TASK_LIST_DEFAULT_LIMIT
+    ),
+) -> Pagination:
+    return Pagination(skip=skip, limit=limit)
+
+
+PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
 
 def get_workspace_service(session: SessionDep) -> WorkspaceService:

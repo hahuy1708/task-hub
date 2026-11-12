@@ -24,3 +24,7 @@ class ForbiddenException(AppException):
 
 class ConflictException(AppException):
     status_code = HTTPStatus.CONFLICT
+
+
+class UnprocessableEntityException(AppException):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY

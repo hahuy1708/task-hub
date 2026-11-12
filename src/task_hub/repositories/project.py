@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from task_hub.core.pagination import Pagination
 from task_hub.models.enums import ProjectStatus
 from task_hub.models.project import Project
 
@@ -22,8 +23,7 @@ class ProjectRepository:
         workspace_id: int,
         *,
         status: ProjectStatus | None,
-        skip: int,
-        limit: int,
+        pagination: Pagination,
     ) -> tuple[list[Project], int]:
         conditions = [Project.workspace_id == workspace_id]
         if status is not None:
@@ -32,8 +32,8 @@ class ProjectRepository:
             select(Project)
             .where(*conditions)
             .order_by(Project.id)
-            .offset(skip)
-            .limit(limit)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
         )
         total = await self.session.scalar(
             select(func.count()).select_from(Project).where(*conditions)

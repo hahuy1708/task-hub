@@ -1,17 +1,9 @@
-from typing import Annotated
+from fastapi import APIRouter, Response, status
 
-from fastapi import APIRouter, Query, Response, status
-
-from task_hub.core.constants import (
-    AUTH_USER_LIST_DEFAULT_LIMIT,
-    AUTH_USER_LIST_DEFAULT_SKIP,
-    AUTH_USER_LIST_MAX_LIMIT,
-    AUTH_USER_LIST_MIN_LIMIT,
-    AUTH_USER_LIST_MIN_SKIP,
-)
 from task_hub.dependencies import (
     AdminDep,
     CurrentUserDep,
+    PaginationDep,
     UserServiceDep,
 )
 from task_hub.schemas.user import (
@@ -28,14 +20,9 @@ router = APIRouter(tags=["users"])
 async def list_users(
     _: AdminDep,
     service: UserServiceDep,
-    skip: Annotated[
-        int, Query(ge=AUTH_USER_LIST_MIN_SKIP)
-    ] = AUTH_USER_LIST_DEFAULT_SKIP,
-    limit: Annotated[
-        int, Query(ge=AUTH_USER_LIST_MIN_LIMIT, le=AUTH_USER_LIST_MAX_LIMIT)
-    ] = (AUTH_USER_LIST_DEFAULT_LIMIT),
+    pagination: PaginationDep,
 ) -> UserListRead:
-    users, total = await service.list_users(skip=skip, limit=limit)
+    users, total = await service.list_users(pagination=pagination)
     return UserListRead(
         items=[UserRead.model_validate(user) for user in users],
         total=total,

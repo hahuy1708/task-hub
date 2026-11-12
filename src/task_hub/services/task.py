@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_hub.core.exceptions import (
     ConflictException,
-    ForbiddenException,
     NotFoundException,
+    UnprocessableEntityException,
 )
 from task_hub.core.messages import (
     PROJECT_ARCHIVED,
@@ -11,6 +11,7 @@ from task_hub.core.messages import (
     TASK_ASSIGNEE_NOT_MEMBER,
     TASK_NOT_FOUND,
 )
+from task_hub.core.pagination import Pagination
 from task_hub.models.enums import ProjectStatus, TaskPriority, TaskStatus, WorkspaceRole
 from task_hub.models.project import Project
 from task_hub.models.task import Task
@@ -42,8 +43,7 @@ class TaskService:
         status: TaskStatus | None,
         priority: TaskPriority | None,
         assignee_id: int | None,
-        skip: int,
-        limit: int,
+        pagination: Pagination,
     ) -> tuple[list[Task], int]:
         project = await self._get_project(project_id)
         await self.workspaces.check_access(
@@ -54,8 +54,7 @@ class TaskService:
             status=status,
             priority=priority,
             assignee_id=assignee_id,
-            skip=skip,
-            limit=limit,
+            pagination=pagination,
         )
 
     async def create_task(self, project_id: int, user: User, data: TaskCreate) -> Task:
@@ -77,34 +76,24 @@ class TaskService:
         return task
 
     async def get_task(self, task_id: int, user: User) -> Task:
-        task = await self._get_task(task_id)
-        project = await self._get_project(task.project_id)
-        await self.workspaces.check_access(
-            project.workspace_id, user, WorkspaceRole.VIEWER
-        )
+        task, _ = await self._get_task_for_user(task_id, user, WorkspaceRole.VIEWER)
         return task
 
     async def update_task(self, task_id: int, user: User, data: TaskUpdate) -> Task:
-        task = await self._get_task(task_id)
-        project = await self._get_project(task.project_id)
-        await self.workspaces.check_access(
-            project.workspace_id, user, WorkspaceRole.EDITOR
+        task, project = await self._get_task_for_user(
+            task_id, user, WorkspaceRole.EDITOR
         )
         self._ensure_project_active(project)
         if "assignee_id" in data.model_fields_set:
             await self._validate_assignee(project, data.assignee_id)
-        for name, value in data.model_dump(exclude_unset=True).items():
-            setattr(task, name, value)
+        task = await self.repository.save(task, data)
         await self.session.commit()
         await self.session.refresh(task)
         return task
 
     async def delete_task(self, task_id: int, user: User) -> None:
-        task = await self._get_task(task_id)
-        project = await self._get_project(task.project_id)
-        await self.workspaces.check_access(
-            project.workspace_id, user, WorkspaceRole.EDITOR
-        )
+        task, _ = await self._get_task_for_user(task_id, user, WorkspaceRole.EDITOR)
+        # Keep deletion available so archived projects can still be cleaned up.
         await self.repository.delete(task)
         await self.session.commit()
 
@@ -114,11 +103,15 @@ class TaskService:
             raise NotFoundException(PROJECT_NOT_FOUND.format(project_id=project_id))
         return project
 
-    async def _get_task(self, task_id: int) -> Task:
-        task = await self.repository.get(task_id)
-        if task is None:
+    async def _get_task_for_user(
+        self, task_id: int, user: User, min_role: WorkspaceRole
+    ) -> tuple[Task, Project]:
+        task_project = await self.repository.get_with_project(task_id)
+        if task_project is None:
             raise NotFoundException(TASK_NOT_FOUND.format(task_id=task_id))
-        return task
+        task, project = task_project
+        await self.workspaces.check_access(project.workspace_id, user, min_role)
+        return task, project
 
     async def _validate_assignee(
         self, project: Project, assignee_id: int | None
@@ -126,7 +119,7 @@ class TaskService:
         if assignee_id is not None and not await self.workspaces.is_member(
             project.workspace_id, assignee_id
         ):
-            raise ForbiddenException(TASK_ASSIGNEE_NOT_MEMBER)
+            raise UnprocessableEntityException(TASK_ASSIGNEE_NOT_MEMBER)
 
     @staticmethod
     def _ensure_project_active(project: Project) -> None:

@@ -2,22 +2,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, status
 
-from task_hub.core.constants import (
-    TASK_ID_MIN,
-    TASK_LIST_DEFAULT_LIMIT,
-    TASK_LIST_DEFAULT_SKIP,
-    TASK_LIST_MAX_LIMIT,
-    TASK_LIST_MIN_LIMIT,
-    TASK_SKIP_MIN,
-)
-from task_hub.dependencies import CurrentUserDep, TaskServiceDep
+from task_hub.core.constants import TASK_ID_MIN
+from task_hub.dependencies import CurrentUserDep, PaginationDep, TaskServiceDep
 from task_hub.models.enums import TaskPriority, TaskStatus
+from task_hub.routers.types import ProjectId
 from task_hub.schemas.page import Page
 from task_hub.schemas.task import TaskCreate, TaskRead, TaskUpdate
 
 router = APIRouter(tags=["tasks"])
 TaskId = Annotated[int, Path(ge=TASK_ID_MIN)]
-ProjectId = Annotated[int, Path(ge=TASK_ID_MIN)]
 
 
 @router.get("/projects/{project_id}/tasks", summary="List tasks in a project")
@@ -25,13 +18,10 @@ async def list_tasks(
     project_id: ProjectId,
     user: CurrentUserDep,
     service: TaskServiceDep,
+    pagination: PaginationDep,
     task_status: Annotated[TaskStatus | None, Query(alias="status")] = None,
     priority: TaskPriority | None = None,
     assignee_id: Annotated[int | None, Query(ge=TASK_ID_MIN)] = None,
-    skip: Annotated[int, Query(ge=TASK_SKIP_MIN)] = TASK_LIST_DEFAULT_SKIP,
-    limit: Annotated[
-        int, Query(ge=TASK_LIST_MIN_LIMIT, le=TASK_LIST_MAX_LIMIT)
-    ] = TASK_LIST_DEFAULT_LIMIT,
 ) -> Page[TaskRead]:
     tasks, total = await service.list_tasks(
         project_id,
@@ -39,8 +29,7 @@ async def list_tasks(
         status=task_status,
         priority=priority,
         assignee_id=assignee_id,
-        skip=skip,
-        limit=limit,
+        pagination=pagination,
     )
     return Page[TaskRead](
         items=[TaskRead.model_validate(task) for task in tasks],

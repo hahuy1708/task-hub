@@ -14,6 +14,7 @@ from task_hub.core.messages import (
     WORKSPACE_NOT_FOUND,
     WORKSPACE_OWNER_CANNOT_LEAVE,
 )
+from task_hub.core.pagination import Pagination
 from task_hub.models.enums import SystemRole, WorkspaceRole
 from task_hub.models.user import User
 from task_hub.models.workspace import Workspace, WorkspaceMember
@@ -52,11 +53,11 @@ class WorkspaceService:
         return workspace
 
     async def list_workspaces(
-        self, user: User, *, skip: int, limit: int
+        self, user: User, *, pagination: Pagination
     ) -> tuple[list[Workspace], int]:
         if user.role == SystemRole.ADMIN:
-            return await self.workspaces.list_all(skip=skip, limit=limit)
-        return await self.workspaces.list_for_user(user.id, skip=skip, limit=limit)
+            return await self.workspaces.list_all(pagination=pagination)
+        return await self.workspaces.list_for_user(user.id, pagination=pagination)
 
     async def get_workspace(self, workspace_id: int, user: User) -> Workspace:
         return await self.check_access(workspace_id, user, WorkspaceRole.VIEWER)

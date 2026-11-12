@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_hub.core.exceptions import NotFoundException
 from task_hub.core.messages import PROJECT_NOT_FOUND
+from task_hub.core.pagination import Pagination
 from task_hub.models.enums import ProjectStatus, WorkspaceRole
 from task_hub.models.project import Project
 from task_hub.models.user import User
@@ -38,12 +39,11 @@ class ProjectService:
         user: User,
         *,
         status: ProjectStatus | None,
-        skip: int,
-        limit: int,
+        pagination: Pagination,
     ) -> tuple[list[Project], int]:
         await self.workspaces.check_access(workspace_id, user, WorkspaceRole.VIEWER)
         return await self.projects.list_by_workspace(
-            workspace_id, status=status, skip=skip, limit=limit
+            workspace_id, status=status, pagination=pagination
         )
 
     async def get_project(self, project_id: int, user: User) -> Project:

@@ -1,13 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, status
+from fastapi import APIRouter, Path, status
 
-from task_hub.core.constants import (
-    WORKSPACE_LIST_DEFAULT_LIMIT,
-    WORKSPACE_LIST_DEFAULT_SKIP,
-    WORKSPACE_LIST_MAX_LIMIT,
-)
-from task_hub.dependencies import CurrentUserDep, WorkspaceServiceDep
+from task_hub.dependencies import CurrentUserDep, PaginationDep, WorkspaceServiceDep
+from task_hub.routers.types import WorkspaceId
 from task_hub.schemas.page import Page
 from task_hub.schemas.workspace import (
     WorkspaceCreate,
@@ -18,7 +14,6 @@ from task_hub.schemas.workspace import (
 )
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
-WorkspaceId = Annotated[int, Path(ge=1)]
 UserId = Annotated[int, Path(ge=1)]
 
 
@@ -33,12 +28,9 @@ async def create_workspace(
 async def list_workspaces(
     user: CurrentUserDep,
     service: WorkspaceServiceDep,
-    skip: Annotated[int, Query(ge=0)] = WORKSPACE_LIST_DEFAULT_SKIP,
-    limit: Annotated[int, Query(ge=1, le=WORKSPACE_LIST_MAX_LIMIT)] = (
-        WORKSPACE_LIST_DEFAULT_LIMIT
-    ),
+    pagination: PaginationDep,
 ) -> Page[WorkspaceRead]:
-    workspaces, total = await service.list_workspaces(user, skip=skip, limit=limit)
+    workspaces, total = await service.list_workspaces(user, pagination=pagination)
     return Page[WorkspaceRead](
         items=[WorkspaceRead.model_validate(workspace) for workspace in workspaces],
         total=total,

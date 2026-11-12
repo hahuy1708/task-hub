@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from task_hub.core.pagination import Pagination
 from task_hub.models.user import User
 from task_hub.models.workspace import Workspace, WorkspaceMember
 
@@ -18,15 +19,15 @@ class WorkspaceRepository:
         return await self.session.get(Workspace, workspace_id)
 
     async def list_for_user(
-        self, user_id: int, *, skip: int, limit: int
+        self, user_id: int, *, pagination: Pagination
     ) -> tuple[list[Workspace], int]:
         statement = (
             select(Workspace)
             .join(WorkspaceMember)
             .where(WorkspaceMember.user_id == user_id)
             .order_by(Workspace.id)
-            .offset(skip)
-            .limit(limit)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
         )
         result = await self.session.scalars(statement)
         total = await self.session.scalar(
@@ -36,9 +37,12 @@ class WorkspaceRepository:
         )
         return list(result.all()), int(total or 0)
 
-    async def list_all(self, *, skip: int, limit: int) -> tuple[list[Workspace], int]:
+    async def list_all(self, *, pagination: Pagination) -> tuple[list[Workspace], int]:
         result = await self.session.scalars(
-            select(Workspace).order_by(Workspace.id).offset(skip).limit(limit)
+            select(Workspace)
+            .order_by(Workspace.id)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
         )
         total = await self.session.scalar(select(func.count()).select_from(Workspace))
         return list(result.all()), int(total or 0)

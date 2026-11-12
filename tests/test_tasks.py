@@ -255,7 +255,7 @@ def test_assignee_must_belong_to_project_workspace(client: TestClient) -> None:
         headers=owner,
         json={"title": "Invalid assignment", "assignee_id": outsider_id},
     )
-    assert response.status_code == 403
+    assert response.status_code == 422
 
     member = make_user(client)
     member_id = add_member(client, workspace_id, owner, member, "VIEWER")
@@ -269,7 +269,7 @@ def test_assignee_must_belong_to_project_workspace(client: TestClient) -> None:
     rejected = client.patch(
         f"{TASKS}/{task['id']}", json={"assignee_id": outsider_id}, headers=owner
     )
-    assert rejected.status_code == 403
+    assert rejected.status_code == 422
     assert rejected.json()["detail"]
 
 
@@ -294,6 +294,7 @@ def test_archived_project_blocks_task_create_and_update(
         ).status_code
         == 409
     )
+    assert authenticated_client.delete(f"{TASKS}/{task['id']}").status_code == 204
 
 
 def test_deleting_project_removes_its_tasks(authenticated_client: TestClient) -> None:

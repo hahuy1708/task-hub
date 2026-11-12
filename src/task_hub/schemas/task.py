@@ -5,6 +5,7 @@ from pydantic import AfterValidator, ConfigDict, Field, field_validator
 
 from task_hub.core.constants import (
     TASK_DESCRIPTION_MAX_LENGTH,
+    TASK_ID_MIN,
     TASK_TITLE_MAX_LENGTH,
     TASK_TITLE_MIN_LENGTH,
 )
@@ -34,7 +35,7 @@ class TaskCreate(BaseSchema):
     )
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: DueDate = None
-    assignee_id: int | None = Field(default=None, ge=1)
+    assignee_id: int | None = Field(default=None, ge=TASK_ID_MIN)
 
 
 class TaskUpdate(BaseSchema):
@@ -49,7 +50,7 @@ class TaskUpdate(BaseSchema):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: DueDate = None
-    assignee_id: int | None = Field(default=None, ge=1)
+    assignee_id: int | None = Field(default=None, ge=TASK_ID_MIN)
 
     @field_validator("title", "status", "priority", mode="before")
     @classmethod

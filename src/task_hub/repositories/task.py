@@ -1,7 +1,9 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from task_hub.core.pagination import Pagination
 from task_hub.models.enums import TaskPriority, TaskStatus
+from task_hub.models.project import Project
 from task_hub.models.task import Task
 from task_hub.schemas.task import TaskUpdate
 
@@ -17,8 +19,7 @@ class TaskRepository:
         status: TaskStatus | None,
         priority: TaskPriority | None,
         assignee_id: int | None,
-        skip: int,
-        limit: int,
+        pagination: Pagination,
     ) -> tuple[list[Task], int]:
         conditions = [Task.project_id == project_id]
         if status is not None:
@@ -28,7 +29,11 @@ class TaskRepository:
         if assignee_id is not None:
             conditions.append(Task.assignee_id == assignee_id)
         result = await self.session.scalars(
-            select(Task).where(*conditions).order_by(Task.id).offset(skip).limit(limit)
+            select(Task)
+            .where(*conditions)
+            .order_by(Task.id)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
         )
         tasks = list(result.all())
         total = await self.session.scalar(
@@ -36,8 +41,14 @@ class TaskRepository:
         )
         return tasks, int(total or 0)
 
-    async def get(self, task_id: int) -> Task | None:
-        return await self.session.get(Task, task_id)
+    async def get_with_project(self, task_id: int) -> tuple[Task, Project] | None:
+        result = await self.session.execute(
+            select(Task, Project)
+            .join(Project, Task.project_id == Project.id)
+            .where(Task.id == task_id)
+        )
+        row = result.first()
+        return (row[0], row[1]) if row else None
 
     async def add(self, task: Task) -> Task:
         self.session.add(task)
