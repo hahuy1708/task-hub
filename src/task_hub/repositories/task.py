@@ -1,5 +1,6 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from task_hub.core.pagination import Pagination
 from task_hub.models.enums import TaskPriority, TaskStatus
@@ -30,6 +31,7 @@ class TaskRepository:
             conditions.append(Task.assignee_id == assignee_id)
         result = await self.session.scalars(
             select(Task)
+            .options(selectinload(Task.labels))
             .where(*conditions)
             .order_by(Task.id)
             .offset(pagination.skip)
@@ -44,6 +46,7 @@ class TaskRepository:
     async def get_with_project(self, task_id: int) -> tuple[Task, Project] | None:
         result = await self.session.execute(
             select(Task, Project)
+            .options(selectinload(Task.labels))
             .join(Project, Task.project_id == Project.id)
             .where(Task.id == task_id)
         )

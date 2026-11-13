@@ -1,12 +1,20 @@
+from __future__ import annotations
+
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from task_hub.core.constants import TASK_TITLE_MAX_LENGTH
 from task_hub.models.base import Base
 from task_hub.models.enums import TaskPriority, TaskStatus
+from task_hub.models.label import task_labels
 from task_hub.models.types import UTCDateTime
+
+if TYPE_CHECKING:
+    from task_hub.models.comment import Comment
+    from task_hub.models.label import Label
 
 
 class Task(Base):
@@ -37,4 +45,10 @@ class Task(Base):
         UTCDateTime(),
         nullable=False,
         server_default=func.now(),
+    )
+    labels: Mapped[list[Label]] = relationship(
+        secondary=task_labels, back_populates="tasks"
+    )
+    comments: Mapped[list[Comment]] = relationship(
+        back_populates="task", cascade="all, delete-orphan"
     )
