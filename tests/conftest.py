@@ -14,6 +14,7 @@ from sqlalchemy.pool import NullPool
 
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///unused.db")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-at-least-32-bytes")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 from task_hub.models import Base, SystemRole, User
 
