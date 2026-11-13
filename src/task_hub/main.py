@@ -3,16 +3,23 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from redis.asyncio import Redis
 
+from task_hub.core.config import settings
 from task_hub.core.exceptions import AppException
 from task_hub.database import engine
 from task_hub.routers import api_router
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    yield
-    await engine.dispose()
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    application.state.redis = redis
+    try:
+        yield
+    finally:
+        await redis.aclose()
+        await engine.dispose()
 
 
 app = FastAPI(

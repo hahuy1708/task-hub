@@ -19,3 +19,10 @@ WORKSPACE_OWNER_CANNOT_LEAVE = "Workspace owner cannot leave or be removed"
 PROJECT_NOT_FOUND = "Project {project_id} not found"
 PROJECT_ARCHIVED = "Tasks cannot be changed while the project is archived"
 TASK_ASSIGNEE_NOT_MEMBER = "Assignee must be a member of the project workspace"
+LABEL_NOT_FOUND = "Label {label_id} not found"
+LABEL_PROJECT_MISMATCH = "Label must belong to the task project"
+LABEL_ALREADY_ATTACHED = "Label is already attached to this task"
+COMMENT_NOT_FOUND = "Comment {comment_id} not found"
+COMMENT_DELETE_FORBIDDEN = (
+    "Only the comment author, workspace owner, or admin can delete this comment"
+)

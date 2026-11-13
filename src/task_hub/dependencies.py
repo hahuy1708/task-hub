@@ -1,9 +1,10 @@
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, cast
 
 import jwt
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_hub.core.constants import (
@@ -19,11 +20,15 @@ from task_hub.core.pagination import Pagination
 from task_hub.database import SessionFactory
 from task_hub.models.enums import SystemRole, TokenType
 from task_hub.models.user import User
+from task_hub.repositories.comment import CommentRepository
+from task_hub.repositories.label import LabelRepository
 from task_hub.repositories.project import ProjectRepository
 from task_hub.repositories.task import TaskRepository
 from task_hub.repositories.user import UserRepository
 from task_hub.security import decode_token
 from task_hub.services.auth import AuthService
+from task_hub.services.comment import CommentService
+from task_hub.services.label import LabelService
 from task_hub.services.project import ProjectService
 from task_hub.services.task import TaskService
 from task_hub.services.user import UserService
@@ -89,6 +94,42 @@ def get_project_service(
 
 
 ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
+
+
+def get_label_service(
+    session: SessionDep, workspaces: WorkspaceServiceDep
+) -> LabelService:
+    return LabelService(
+        LabelRepository(session),
+        TaskRepository(session),
+        ProjectRepository(session),
+        workspaces,
+        session,
+    )
+
+
+LabelServiceDep = Annotated[LabelService, Depends(get_label_service)]
+
+
+def get_comment_service(
+    session: SessionDep, workspaces: WorkspaceServiceDep
+) -> CommentService:
+    return CommentService(
+        CommentRepository(session), TaskRepository(session), workspaces, session
+    )
+
+
+CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]
+
+
+def get_redis(request: Request) -> Redis:
+    redis = getattr(request.app.state, "redis", None)
+    if redis is None:
+        raise RuntimeError("Redis client is not initialized")
+    return cast(Redis, redis)
+
+
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 http_bearer = HTTPBearer()
 

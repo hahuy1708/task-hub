@@ -72,7 +72,7 @@ class TaskService:
             )
         )
         await self.session.commit()
-        await self.session.refresh(task)
+        await self.session.refresh(task, attribute_names=["labels"])
         return task
 
     async def get_task(self, task_id: int, user: User) -> Task:
@@ -88,7 +88,7 @@ class TaskService:
             await self._validate_assignee(project, data.assignee_id)
         task = await self.repository.save(task, data)
         await self.session.commit()
-        await self.session.refresh(task)
+        await self.session.refresh(task, attribute_names=["labels"])
         return task
 
     async def delete_task(self, task_id: int, user: User) -> None:
