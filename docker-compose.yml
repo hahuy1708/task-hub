@@ -19,6 +19,17 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+  redis:
+    image: redis:7
+    container_name: taskhub-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   mysql_data:
