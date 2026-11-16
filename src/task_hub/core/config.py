@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str
+    redis_url: str = "redis://localhost:6379/0"
     jwt_secret_key: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

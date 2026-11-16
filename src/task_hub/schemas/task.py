@@ -15,6 +15,7 @@ from task_hub.core.messages import (
 )
 from task_hub.models.enums import TaskPriority, TaskStatus
 from task_hub.schemas.base import BaseSchema
+from task_hub.schemas.label import LabelRead
 
 
 def due_date_must_not_be_in_the_past(value: date | None) -> date | None:
@@ -73,3 +74,4 @@ class TaskRead(BaseSchema):
     priority: TaskPriority
     due_date: date | None
     created_at: datetime
+    labels: list[LabelRead] = Field(default_factory=list)
