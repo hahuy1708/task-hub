@@ -22,6 +22,8 @@ TASK_ASSIGNEE_NOT_MEMBER = "Assignee must be a member of the project workspace"
 LABEL_NOT_FOUND = "Label {label_id} not found"
 LABEL_PROJECT_MISMATCH = "Label must belong to the task project"
 LABEL_ALREADY_ATTACHED = "Label is already attached to this task"
+LABEL_NOT_ATTACHED = "Label is not attached to this task"
+LABEL_NAME_ALREADY_EXISTS = "Label name already exists in this project"
 COMMENT_NOT_FOUND = "Comment {comment_id} not found"
 COMMENT_DELETE_FORBIDDEN = (
     "Only the comment author, workspace owner, or admin can delete this comment"

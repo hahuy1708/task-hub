@@ -1,6 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from task_hub.core.pagination import Pagination
 from task_hub.models.label import Label
 from task_hub.models.task import Task
 from task_hub.schemas.label import LabelUpdate
@@ -18,11 +19,22 @@ class LabelRepository:
     async def get_by_id(self, label_id: int) -> Label | None:
         return await self.session.get(Label, label_id)
 
-    async def list_by_project(self, project_id: int) -> list[Label]:
+    async def list_by_project(
+        self, project_id: int, pagination: Pagination
+    ) -> tuple[list[Label], int]:
         result = await self.session.scalars(
-            select(Label).where(Label.project_id == project_id).order_by(Label.id)
+            select(Label)
+            .where(Label.project_id == project_id)
+            .order_by(Label.id)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
         )
-        return list(result.all())
+        total = await self.session.scalar(
+            select(func.count())
+            .select_from(Label)
+            .where(Label.project_id == project_id)
+        )
+        return list(result.all()), int(total or 0)
 
     async def save(self, label: Label, data: LabelUpdate) -> Label:
         for name, value in data.model_dump(exclude_unset=True).items():

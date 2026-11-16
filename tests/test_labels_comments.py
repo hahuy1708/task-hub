@@ -1,7 +1,10 @@
 from typing import Any, cast
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 AUTH = "/api/v1/auth"
 WORKSPACES = "/api/v1/workspaces"
@@ -105,6 +108,104 @@ def test_labels_are_project_scoped_and_included_in_task_read(
         ).status_code
         == 409
     )
+
+
+def test_label_attach_integrity_conflict_returns_409(
+    authenticated_client: TestClient,
+) -> None:
+    _, project_id = create_project(authenticated_client, {})
+    task = create_task(authenticated_client, project_id, {})
+    label = authenticated_client.post(
+        f"{PROJECTS}/{project_id}/labels", json={"name": "race", "color": "#000000"}
+    )
+    assert label.status_code == 201
+
+    integrity_error = IntegrityError("insert", {}, Exception("duplicate key"))
+    with patch.object(
+        AsyncSession, "commit", new_callable=AsyncMock, side_effect=integrity_error
+    ):
+        response = authenticated_client.post(
+            f"{TASKS}/{task['id']}/labels/{label.json()['id']}"
+        )
+    assert response.status_code == 409
+
+
+def test_detaching_unattached_label_returns_404(
+    authenticated_client: TestClient,
+) -> None:
+    _, project_id = create_project(authenticated_client, {})
+    task = create_task(authenticated_client, project_id, {})
+    label = authenticated_client.post(
+        f"{PROJECTS}/{project_id}/labels", json={"name": "unused", "color": "#000000"}
+    )
+    assert label.status_code == 201
+    response = authenticated_client.delete(
+        f"{TASKS}/{task['id']}/labels/{label.json()['id']}"
+    )
+    assert response.status_code == 404
+
+
+def test_archived_project_rejects_label_and_comment_writes(
+    authenticated_client: TestClient,
+) -> None:
+    _, project_id = create_project(authenticated_client, {})
+    task = create_task(authenticated_client, project_id, {})
+    label = authenticated_client.post(
+        f"{PROJECTS}/{project_id}/labels", json={"name": "archived", "color": "#000000"}
+    )
+    assert label.status_code == 201
+    assert (
+        authenticated_client.post(
+            f"{TASKS}/{task['id']}/labels/{label.json()['id']}"
+        ).status_code
+        == 204
+    )
+    archive = authenticated_client.patch(
+        f"/api/v1/projects/{project_id}", json={"status": "ARCHIVED"}
+    )
+    assert archive.status_code == 200
+
+    assert (
+        authenticated_client.post(
+            f"{TASKS}/{task['id']}/labels/{label.json()['id']}"
+        ).status_code
+        == 409
+    )
+    assert (
+        authenticated_client.delete(
+            f"{TASKS}/{task['id']}/labels/{label.json()['id']}"
+        ).status_code
+        == 409
+    )
+    assert (
+        authenticated_client.post(
+            f"{TASKS}/{task['id']}/comments", json={"content": "blocked"}
+        ).status_code
+        == 409
+    )
+
+
+def test_comment_and_label_lists_are_paginated(
+    authenticated_client: TestClient,
+) -> None:
+    _, project_id = create_project(authenticated_client, {})
+    task = create_task(authenticated_client, project_id, {})
+    for index in range(2):
+        label = authenticated_client.post(
+            f"{PROJECTS}/{project_id}/labels",
+            json={"name": f"label-{index}", "color": "#000000"},
+        )
+        assert label.status_code == 201
+        comment = authenticated_client.post(
+            f"{TASKS}/{task['id']}/comments", json={"content": f"comment-{index}"}
+        )
+        assert comment.status_code == 201
+
+    labels = authenticated_client.get(f"{PROJECTS}/{project_id}/labels?skip=1&limit=1")
+    comments = authenticated_client.get(f"{TASKS}/{task['id']}/comments?skip=1&limit=1")
+    assert labels.status_code == comments.status_code == 200
+    assert len(labels.json()["items"]) == len(comments.json()["items"]) == 1
+    assert labels.json()["total"] == comments.json()["total"] == 2
 
 
 def test_label_and_comment_permissions(client: TestClient) -> None:

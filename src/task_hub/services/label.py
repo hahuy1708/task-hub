@@ -8,12 +8,16 @@ from task_hub.core.exceptions import (
 )
 from task_hub.core.messages import (
     LABEL_ALREADY_ATTACHED,
+    LABEL_NAME_ALREADY_EXISTS,
+    LABEL_NOT_ATTACHED,
     LABEL_NOT_FOUND,
     LABEL_PROJECT_MISMATCH,
+    PROJECT_ARCHIVED,
     PROJECT_NOT_FOUND,
     TASK_NOT_FOUND,
 )
-from task_hub.models.enums import WorkspaceRole
+from task_hub.core.pagination import Pagination
+from task_hub.models.enums import ProjectStatus, WorkspaceRole
 from task_hub.models.label import Label
 from task_hub.models.project import Project
 from task_hub.models.task import Task
@@ -40,12 +44,14 @@ class LabelService:
         self.workspaces = workspaces
         self.session = session
 
-    async def list_labels(self, project_id: int, user: User) -> list[Label]:
+    async def list_labels(
+        self, project_id: int, user: User, pagination: Pagination
+    ) -> tuple[list[Label], int]:
         project = await self._get_project(project_id)
         await self.workspaces.check_access(
             project.workspace_id, user, WorkspaceRole.VIEWER
         )
-        return await self.labels.list_by_project(project_id)
+        return await self.labels.list_by_project(project_id, pagination)
 
     async def create_label(
         self, project_id: int, user: User, data: LabelCreate
@@ -61,9 +67,7 @@ class LabelService:
             await self.session.commit()
         except IntegrityError:
             await self.session.rollback()
-            raise ConflictException(
-                "Label name already exists in this project"
-            ) from None
+            raise ConflictException(LABEL_NAME_ALREADY_EXISTS) from None
         await self.session.refresh(label)
         return label
 
@@ -78,9 +82,7 @@ class LabelService:
             await self.session.commit()
         except IntegrityError:
             await self.session.rollback()
-            raise ConflictException(
-                "Label name already exists in this project"
-            ) from None
+            raise ConflictException(LABEL_NAME_ALREADY_EXISTS) from None
         await self.session.refresh(label)
         return label
 
@@ -98,25 +100,33 @@ class LabelService:
         await self.workspaces.check_access(
             project.workspace_id, user, WorkspaceRole.EDITOR
         )
+        self._ensure_project_active(project)
         label = await self._get_label(label_id)
         if label.project_id != project.id:
             raise UnprocessableEntityException(LABEL_PROJECT_MISMATCH)
         if await self.labels.is_attached(task, label_id):
             raise ConflictException(LABEL_ALREADY_ATTACHED)
         task.labels.append(label)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise ConflictException(LABEL_ALREADY_ATTACHED) from None
 
     async def detach_label(self, task_id: int, label_id: int, user: User) -> None:
         task, project = await self._get_task(task_id)
         await self.workspaces.check_access(
             project.workspace_id, user, WorkspaceRole.EDITOR
         )
+        self._ensure_project_active(project)
         label = await self._get_label(label_id)
         if label.project_id != project.id:
             raise UnprocessableEntityException(LABEL_PROJECT_MISMATCH)
         if label in task.labels:
             task.labels.remove(label)
             await self.session.commit()
+        else:
+            raise NotFoundException(LABEL_NOT_ATTACHED)
 
     async def _get_project(self, project_id: int) -> Project:
         project = await self.projects.get_by_id(project_id)
@@ -135,3 +145,8 @@ class LabelService:
         if task_project is None:
             raise NotFoundException(TASK_NOT_FOUND.format(task_id=task_id))
         return task_project
+
+    @staticmethod
+    def _ensure_project_active(project: Project) -> None:
+        if project.status == ProjectStatus.ARCHIVED:
+            raise ConflictException(PROJECT_ARCHIVED)

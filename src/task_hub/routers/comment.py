@@ -3,8 +3,9 @@ from typing import Annotated
 from fastapi import APIRouter, Path, status
 
 from task_hub.core.constants import TASK_ID_MIN
-from task_hub.dependencies import CommentServiceDep, CurrentUserDep
+from task_hub.dependencies import CommentServiceDep, CurrentUserDep, PaginationDep
 from task_hub.schemas.comment import CommentCreate, CommentRead
+from task_hub.schemas.page import Page
 
 router = APIRouter(tags=["comments"])
 CommentId = Annotated[int, Path(ge=TASK_ID_MIN)]
@@ -26,12 +27,16 @@ async def create_comment(
 
 @router.get("/tasks/{task_id}/comments", summary="List task comments")
 async def list_comments(
-    task_id: CommentId, user: CurrentUserDep, service: CommentServiceDep
-) -> list[CommentRead]:
-    return [
-        CommentRead.model_validate(comment)
-        for comment in await service.list_comments(task_id, user)
-    ]
+    task_id: CommentId,
+    user: CurrentUserDep,
+    service: CommentServiceDep,
+    pagination: PaginationDep,
+) -> Page[CommentRead]:
+    comments, total = await service.list_comments(task_id, user, pagination)
+    return Page[CommentRead](
+        items=[CommentRead.model_validate(comment) for comment in comments],
+        total=total,
+    )
 
 
 @router.delete(

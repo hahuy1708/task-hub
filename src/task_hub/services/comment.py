@@ -1,16 +1,19 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_hub.core.exceptions import (
+    ConflictException,
     ForbiddenException,
     NotFoundException,
 )
 from task_hub.core.messages import (
     COMMENT_DELETE_FORBIDDEN,
     COMMENT_NOT_FOUND,
+    PROJECT_ARCHIVED,
     TASK_NOT_FOUND,
 )
+from task_hub.core.pagination import Pagination
 from task_hub.models.comment import Comment
-from task_hub.models.enums import SystemRole, WorkspaceRole
+from task_hub.models.enums import ProjectStatus, SystemRole, WorkspaceRole
 from task_hub.models.project import Project
 from task_hub.models.task import Task
 from task_hub.models.user import User
@@ -33,12 +36,14 @@ class CommentService:
         self.workspaces = workspaces
         self.session = session
 
-    async def list_comments(self, task_id: int, user: User) -> list[Comment]:
+    async def list_comments(
+        self, task_id: int, user: User, pagination: Pagination
+    ) -> tuple[list[Comment], int]:
         _, project = await self._get_task(task_id)
         await self.workspaces.check_access(
             project.workspace_id, user, WorkspaceRole.VIEWER
         )
-        return await self.comments.list_by_task(task_id)
+        return await self.comments.list_by_task(task_id, pagination)
 
     async def create_comment(
         self, task_id: int, user: User, data: CommentCreate
@@ -47,6 +52,7 @@ class CommentService:
         await self.workspaces.check_access(
             project.workspace_id, user, WorkspaceRole.EDITOR
         )
+        self._ensure_project_active(project)
         comment = await self.comments.add(
             Comment(task_id=task_id, author_id=user.id, content=data.content)
         )
@@ -77,3 +83,8 @@ class CommentService:
         if task_project is None:
             raise NotFoundException(TASK_NOT_FOUND.format(task_id=task_id))
         return task_project
+
+    @staticmethod
+    def _ensure_project_active(project: Project) -> None:
+        if project.status == ProjectStatus.ARCHIVED:
+            raise ConflictException(PROJECT_ARCHIVED)
