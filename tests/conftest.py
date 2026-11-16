@@ -7,6 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from fakeredis import FakeAsyncRedis
 from fastapi.testclient import TestClient
 from sqlalchemy import event, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -53,6 +54,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
         app.dependency_overrides[get_session] = override_get_session
         try:
             with TestClient(app) as test_client:
+                app.state.redis = FakeAsyncRedis(decode_responses=True)
                 yield test_client
         finally:
             app.dependency_overrides.pop(get_session, None)
