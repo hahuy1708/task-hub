@@ -23,17 +23,13 @@ async def list_tasks(
     priority: TaskPriority | None = None,
     assignee_id: Annotated[int | None, Query(ge=TASK_ID_MIN)] = None,
 ) -> Page[TaskRead]:
-    tasks, total = await service.list_tasks(
+    return await service.list_tasks(
         project_id,
         user,
         status=task_status,
         priority=priority,
         assignee_id=assignee_id,
         pagination=pagination,
-    )
-    return Page[TaskRead](
-        items=[TaskRead.model_validate(task) for task in tasks],
-        total=total,
     )
 
 

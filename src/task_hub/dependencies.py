@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated, cast
 
 import jwt
-from fastapi import Depends, Query, Request
+from fastapi import BackgroundTasks, Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,8 +29,10 @@ from task_hub.security import decode_token
 from task_hub.services.auth import AuthService
 from task_hub.services.comment import CommentService
 from task_hub.services.label import LabelService
+from task_hub.services.notifications import TaskNotifier, send_task_assigned_email
 from task_hub.services.project import ProjectService
 from task_hub.services.task import TaskService
+from task_hub.services.task_cache import TaskListCache
 from task_hub.services.user import UserService
 from task_hub.services.workspace import WorkspaceService
 
@@ -55,6 +57,42 @@ def get_pagination(
 PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
 
+def get_redis(request: Request) -> Redis:
+    redis = getattr(request.app.state, "redis", None)
+    if redis is None:
+        raise RuntimeError("Redis client is not initialized")
+    return cast(Redis, redis)
+
+
+RedisDep = Annotated[Redis, Depends(get_redis)]
+
+
+def get_task_list_cache(redis: RedisDep) -> TaskListCache:
+    return TaskListCache(redis)
+
+
+TaskListCacheDep = Annotated[TaskListCache, Depends(get_task_list_cache)]
+
+
+class BackgroundTaskNotifier:
+    """Đưa việc gửi thông báo vào BackgroundTasks, chạy sau khi response đã trả về."""
+
+    def __init__(self, background_tasks: BackgroundTasks) -> None:
+        self._background_tasks = background_tasks
+
+    def task_assigned(self, *, to_email: str, task_id: int, title: str) -> None:
+        self._background_tasks.add_task(
+            send_task_assigned_email, to_email, task_id, title
+        )
+
+
+def get_task_notifier(background_tasks: BackgroundTasks) -> TaskNotifier:
+    return BackgroundTaskNotifier(background_tasks)
+
+
+TaskNotifierDep = Annotated[TaskNotifier, Depends(get_task_notifier)]
+
+
 def get_workspace_service(session: SessionDep) -> WorkspaceService:
     return WorkspaceService(session)
 
@@ -63,10 +101,18 @@ WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)
 
 
 def get_task_service(
-    session: SessionDep, workspaces: WorkspaceServiceDep
+    session: SessionDep,
+    workspaces: WorkspaceServiceDep,
+    cache: TaskListCacheDep,
+    notifier: TaskNotifierDep,
 ) -> TaskService:
     return TaskService(
-        TaskRepository(session), ProjectRepository(session), workspaces, session
+        TaskRepository(session),
+        ProjectRepository(session),
+        workspaces,
+        session,
+        cache,
+        notifier,
     )
 
 
@@ -97,7 +143,9 @@ ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
 
 
 def get_label_service(
-    session: SessionDep, workspaces: WorkspaceServiceDep
+    session: SessionDep,
+    workspaces: WorkspaceServiceDep,
+    cache: TaskListCacheDep,
 ) -> LabelService:
     return LabelService(
         LabelRepository(session),
@@ -105,6 +153,7 @@ def get_label_service(
         ProjectRepository(session),
         workspaces,
         session,
+        cache,
     )
 
 
@@ -120,16 +169,6 @@ def get_comment_service(
 
 
 CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]
-
-
-def get_redis(request: Request) -> Redis:
-    redis = getattr(request.app.state, "redis", None)
-    if redis is None:
-        raise RuntimeError("Redis client is not initialized")
-    return cast(Redis, redis)
-
-
-RedisDep = Annotated[Redis, Depends(get_redis)]
 
 http_bearer = HTTPBearer()
 

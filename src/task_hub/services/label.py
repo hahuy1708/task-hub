@@ -26,6 +26,7 @@ from task_hub.repositories.label import LabelRepository
 from task_hub.repositories.project import ProjectRepository
 from task_hub.repositories.task import TaskRepository
 from task_hub.schemas.label import LabelCreate, LabelUpdate
+from task_hub.services.task_cache import TaskListCache
 from task_hub.services.workspace import WorkspaceService
 
 
@@ -37,12 +38,14 @@ class LabelService:
         projects: ProjectRepository,
         workspaces: WorkspaceService,
         session: AsyncSession,
+        cache: TaskListCache,
     ) -> None:
         self.labels = labels
         self.tasks = tasks
         self.projects = projects
         self.workspaces = workspaces
         self.session = session
+        self.cache = cache
 
     async def list_labels(
         self, project_id: int, user: User, pagination: Pagination
@@ -84,6 +87,7 @@ class LabelService:
             await self.session.rollback()
             raise ConflictException(LABEL_NAME_ALREADY_EXISTS) from None
         await self.session.refresh(label)
+        await self.cache.invalidate(project.id)
         return label
 
     async def delete_label(self, label_id: int, user: User) -> None:
@@ -94,6 +98,7 @@ class LabelService:
         )
         await self.labels.delete(label)
         await self.session.commit()
+        await self.cache.invalidate(project.id)
 
     async def attach_label(self, task_id: int, label_id: int, user: User) -> None:
         task, project = await self._get_task(task_id)
@@ -112,6 +117,7 @@ class LabelService:
         except IntegrityError:
             await self.session.rollback()
             raise ConflictException(LABEL_ALREADY_ATTACHED) from None
+        await self.cache.invalidate(project.id)
 
     async def detach_label(self, task_id: int, label_id: int, user: User) -> None:
         task, project = await self._get_task(task_id)
@@ -125,6 +131,7 @@ class LabelService:
         if label in task.labels:
             task.labels.remove(label)
             await self.session.commit()
+            await self.cache.invalidate(project.id)
         else:
             raise NotFoundException(LABEL_NOT_ATTACHED)
 

@@ -129,3 +129,28 @@ tests/
 - `routers/`: các HTTP endpoint.
 - `dependencies.py`: cung cấp `TaskService` cho router.
 - `main.py`: khởi tạo FastAPI, đăng ký router và xử lý lỗi 404.
+
+## Chạy bằng Docker
+
+Chạy toàn bộ stack (API, MySQL, Redis) từ file `.env` đã tạo ở trên:
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+API chạy tại <http://127.0.0.1:8000> (đổi bằng `APP_PORT` trong `.env`). Container `app` tự chạy
+`alembic upgrade head` trước khi khởi động server. MySQL trên máy host vẫn dùng cổng `MYSQL_PORT`
+(mặc định 3308), còn app trong container kết nối tới service `mysql:3306` và `redis:6379`.
+
+Dừng stack mà giữ dữ liệu: `docker compose down`. Xóa cả dữ liệu MySQL: `docker compose down -v`.
+
+## Cache và thông báo
+
+- `GET /api/v1/projects/{project_id}/tasks` được cache trong Redis. Mỗi project là một hash
+  `project:{id}:tasks`, mỗi tổ hợp bộ lọc và phân trang là một field, TTL 300 giây.
+- Quyền truy cập luôn được kiểm tra trước khi đọc cache.
+- Cache bị xóa sau khi tạo, sửa, xóa task, gán hoặc bỏ label, đổi tên hoặc xóa label.
+- Nếu Redis không khả dụng, API vẫn đọc trực tiếp từ database và ghi log cảnh báo.
+- Khi một thành viên được gán làm người thực hiện task (và không phải chính người thao tác),
+  một thư được gửi nền. Hiện thư chỉ được ghi vào log `task_hub.notifications`, chưa có SMTP.
