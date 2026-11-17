@@ -64,7 +64,8 @@ class TaskService:
             skip=pagination.skip,
             limit=pagination.limit,
         )
-        cached = await self.cache.get(project_id, field)
+        cache_version = await self.cache.version(project_id)
+        cached = await self.cache.get(project_id, cache_version, field)
         if cached is not None:
             return cached
         tasks, total = await self.repository.list_by_project(
@@ -78,7 +79,7 @@ class TaskService:
             items=[TaskRead.model_validate(task) for task in tasks],
             total=total,
         )
-        await self.cache.set(project_id, field, page)
+        await self.cache.set(project_id, cache_version, field, page)
         return page
 
     async def create_task(self, project_id: int, user: User, data: TaskCreate) -> Task:

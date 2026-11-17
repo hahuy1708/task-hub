@@ -20,6 +20,9 @@ COPY migrations ./migrations
 COPY src ./src
 RUN uv sync --frozen --no-dev
 
+RUN useradd --system --create-home app
+USER app
+
 EXPOSE 8000
 
 # exec để uvicorn nhận SIGTERM trực tiếp khi docker stop.

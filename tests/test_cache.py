@@ -1,13 +1,18 @@
+import asyncio
 from typing import Any
 from uuid import uuid4
 
 import pytest
+from fakeredis import FakeAsyncRedis
 from fastapi.testclient import TestClient
 from redis.asyncio import Redis
 
 from task_hub.main import app
 from task_hub.models.task import Task
 from task_hub.repositories.task import TaskRepository
+from task_hub.schemas.page import Page
+from task_hub.schemas.task import TaskRead
+from task_hub.services.task_cache import TaskListCache
 
 API = "/api/v1"
 
@@ -165,3 +170,25 @@ def test_redis_outage_falls_back_to_database(
     )
     assert created.status_code == 201
     assert list_tasks(client, project_id)["total"] == 2
+
+
+def test_late_cache_write_uses_previous_project_version() -> None:
+    async def check() -> None:
+        redis = FakeAsyncRedis(decode_responses=True)
+        cache = TaskListCache(redis)
+        field = "all"
+        stale_page = Page[TaskRead](items=[], total=1)
+        old_version = await cache.version(42)
+        assert old_version == 0
+
+        await cache.set(42, old_version, field, stale_page)
+        await cache.invalidate(42)
+        new_version = await cache.version(42)
+        assert new_version == 1
+
+        # Simulates a list request that finished after the mutation invalidated.
+        await cache.set(42, old_version, field, stale_page)
+        assert await cache.get(42, new_version, field) is None
+        await redis.aclose()
+
+    asyncio.run(check())
