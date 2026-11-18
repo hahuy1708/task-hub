@@ -2,6 +2,7 @@ import asyncio
 
 from alembic import context
 from sqlalchemy import pool
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from task_hub.database import DATABASE_URL
@@ -24,7 +25,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_sync_migrations(connection) -> None:
+def run_sync_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection, target_metadata=target_metadata, compare_type=True
     )
