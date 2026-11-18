@@ -108,11 +108,15 @@ Các route dưới đây đều nằm dưới prefix `/api/v1`.
 
 | Tài nguyên | VIEWER | EDITOR | OWNER | ADMIN |
 | --- | --- | --- | --- | --- |
-| Workspace và nội dung | Đọc | Đọc/ghi | Đọc/ghi | Bypass quyền workspace |
-| Thành viên workspace | Đọc | Đọc | Quản lý | Bypass quyền workspace |
-| User hệ thống | Không truy cập danh sách admin | Không truy cập danh sách admin | Không truy cập danh sách admin | Quản lý qua endpoint admin |
+| Workspace | Đọc | Đọc | Đọc, đổi tên, xóa | Bypass quyền workspace |
+| Thành viên | Đọc danh sách; tự rời workspace | Đọc danh sách; tự rời workspace | Thêm/xóa thành viên; tự rời workspace* | Bypass quyền workspace |
+| Project | Đọc | Đọc, tạo, cập nhật/archive | Đọc, tạo, cập nhật/archive, xóa | Bypass quyền workspace |
+| Task | Đọc | Đọc, tạo, cập nhật, xóa | Đọc, tạo, cập nhật, xóa | Bypass quyền workspace |
+| Label | Đọc | Đọc, tạo, cập nhật, xóa, gắn/gỡ | Đọc, tạo, cập nhật, xóa, gắn/gỡ | Bypass quyền workspace |
+| Comment | Đọc; xóa comment của mình | Đọc, tạo; xóa comment của mình | Đọc, tạo; xóa comment của mình hoặc người khác | Bypass quyền workspace |
+| Danh sách user hệ thống | Không truy cập | Không truy cập | Không truy cập | Truy cập endpoint admin |
 
-`ADMIN` là role cấp hệ thống và bypass kiểm tra role trong workspace. Các thao tác quản lý user chỉ dành cho admin; user thường chỉ xem và cập nhật hồ sơ của chính mình.
+`ADMIN` là role cấp hệ thống và bypass kiểm tra role trong workspace. Các thao tác quản lý user chỉ dành cho admin; user thường chỉ xem và cập nhật hồ sơ của chính mình. *Workspace owner không thể tự rời workspace; cần xóa workspace hoặc chuyển quyền sở hữu (nếu tính năng này được bổ sung sau).
 
 ## Chạy kiểm tra
 
