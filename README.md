@@ -90,6 +90,34 @@ UPDATE users SET role = 'ADMIN' WHERE email = 'your-email@example.com';
 
 Dừng server bằng `Ctrl+C`.
 
+## Nhóm endpoint
+
+Các route dưới đây đều nằm dưới prefix `/api/v1`.
+
+| Nhóm | Endpoint chính |
+| --- | --- |
+| Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
+| Users | `GET /users`, `/users/me`; `PATCH /users/me`; `POST /users/me/change-password` |
+| Workspaces | `GET`, `POST /workspaces`; `GET`, `PATCH`, `DELETE /workspaces/{id}`; quản lý `/workspaces/{id}/members` |
+| Projects | `GET`, `POST /workspaces/{id}/projects`; `GET`, `PATCH`, `DELETE /projects/{id}` |
+| Tasks | `GET`, `POST /projects/{id}/tasks`; `GET`, `PATCH`, `DELETE /tasks/{id}` |
+| Labels | `GET`, `POST /projects/{id}/labels`; `PATCH`, `DELETE /labels/{id}`; gắn/gỡ tại `/tasks/{task_id}/labels/{label_id}` |
+| Comments | `GET`, `POST /tasks/{task_id}/comments`; `DELETE /comments/{comment_id}` |
+
+## Quyền truy cập
+
+| Tài nguyên | VIEWER | EDITOR | OWNER | ADMIN |
+| --- | --- | --- | --- | --- |
+| Workspace | Đọc | Đọc | Đọc, đổi tên, xóa | Bypass quyền workspace |
+| Thành viên | Đọc danh sách; tự rời workspace | Đọc danh sách; tự rời workspace | Thêm/xóa thành viên; tự rời workspace* | Bypass quyền workspace |
+| Project | Đọc | Đọc, tạo, cập nhật/archive | Đọc, tạo, cập nhật/archive, xóa | Bypass quyền workspace |
+| Task | Đọc | Đọc, tạo, cập nhật, xóa | Đọc, tạo, cập nhật, xóa | Bypass quyền workspace |
+| Label | Đọc | Đọc, tạo, cập nhật, xóa, gắn/gỡ | Đọc, tạo, cập nhật, xóa, gắn/gỡ | Bypass quyền workspace |
+| Comment | Đọc; xóa comment của mình | Đọc, tạo; xóa comment của mình | Đọc, tạo; xóa comment của mình hoặc người khác | Bypass quyền workspace |
+| Danh sách user hệ thống | Không truy cập | Không truy cập | Không truy cập | Truy cập endpoint admin |
+
+`ADMIN` là role cấp hệ thống và bypass kiểm tra role trong workspace. Các thao tác quản lý user chỉ dành cho admin; user thường chỉ xem và cập nhật hồ sơ của chính mình. *Workspace owner không thể tự rời workspace; cần xóa workspace hoặc chuyển quyền sở hữu (nếu tính năng này được bổ sung sau).
+
 ## Chạy kiểm tra
 
 Test dùng một file SQLite tạm riêng cho mỗi test; không kết nối MySQL và không cần cấu hình
@@ -127,8 +155,8 @@ tests/
 - `services/`: thao tác và quy tắc nghiệp vụ.
 - `repositories/`: thao tác với cơ sở dữ liệu.
 - `routers/`: các HTTP endpoint.
-- `dependencies.py`: cung cấp `TaskService` cho router.
-- `main.py`: khởi tạo FastAPI, đăng ký router và xử lý lỗi 404.
+- `dependencies.py`: cung cấp session, service và user đã xác thực cho router.
+- `main.py`: khởi tạo FastAPI, Redis, router và xử lý exception nghiệp vụ.
 
 ## Chạy bằng Docker
 
@@ -147,10 +175,13 @@ Dừng stack mà giữ dữ liệu: `docker compose down`. Xóa cả dữ liệu
 
 ## Cache và thông báo
 
-- `GET /api/v1/projects/{project_id}/tasks` được cache trong Redis. Mỗi project là một hash
-  `project:{id}:tasks`, mỗi tổ hợp bộ lọc và phân trang là một field, TTL 300 giây.
+- `GET /api/v1/projects/{project_id}/tasks` được cache trong Redis. Mỗi version là một hash
+  `project:{id}:tasks:v{version}`; key `project:{id}:tasks:version` giữ version hiện tại. Mỗi tổ hợp
+  bộ lọc và phân trang là một field, TTL 300 giây.
 - Quyền truy cập luôn được kiểm tra trước khi đọc cache.
-- Cache bị xóa sau khi tạo, sửa, xóa task, gán hoặc bỏ label, đổi tên hoặc xóa label.
+- Khi task hoặc label thay đổi, version tăng; request đọc dữ liệu cũ đang chạy chỉ có thể ghi vào
+  key version cũ. Các hash cũ tự hết hạn sau 300 giây.
 - Nếu Redis không khả dụng, API vẫn đọc trực tiếp từ database và ghi log cảnh báo.
+- `REDIS_SOCKET_TIMEOUT` và `REDIS_SOCKET_CONNECT_TIMEOUT` cấu hình thời gian chờ Redis; mặc định 1 giây.
 - Khi một thành viên được gán làm người thực hiện task (và không phải chính người thao tác),
   một thư được gửi nền. Hiện thư chỉ được ghi vào log `task_hub.notifications`, chưa có SMTP.
